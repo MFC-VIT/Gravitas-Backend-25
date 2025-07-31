@@ -20,7 +20,7 @@ const errorResponse = (
   return res.status(statusCode).json({
     status: 'error',
     message,
-    error: typeof error === 'string' ? { detail: error } : error,
+    error,
   });
 };
 
