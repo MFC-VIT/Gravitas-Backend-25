@@ -1,13 +1,13 @@
 {
   "name": "Gravitas-Backend-25",
   "version": "1.0.0",
-  "description": "",
+  "description": "",  
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "redis:check": "redis-cli ping",
-    "health:check": "curl http://localhost:3000/api/health",
+    "health:check": "curl http://localhost:3000/health",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",

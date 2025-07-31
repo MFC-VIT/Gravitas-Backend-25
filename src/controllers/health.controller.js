@@ -37,8 +37,16 @@ exports.healthCheck = async (req, res) => {
   }
 
   if (statusCode === 200) {
-    return successResponse(res, healthStatus, 'Health check passed');
+    return res.status(200).json({
+      ...successResponse,
+      message: 'Health check passed',
+      data: healthStatus,
+    });
   } else {
-    return errorResponse(res, healthStatus, 'Health check failed', statusCode);
+    return res.status(statusCode).json({
+      ...errorResponse,
+      message: 'Health check failed',
+      error: healthStatus,
+    });
   }
 };
