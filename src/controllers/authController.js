@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { PrismaClient } = require('../../generated/prisma');
+const { generateToken } = require("../../middleware/validateCsrfToken");
 const prisma = new PrismaClient();
 
 // Generate Tokens
@@ -149,4 +150,10 @@ exports.logoutUser = async (req, res) => {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
+};
+
+// Controller to provide CSRF token
+exports.getCsrfToken = (req, res) => {
+  const csrfToken = generateToken(req, res);
+  res.json({ csrfToken });
 };

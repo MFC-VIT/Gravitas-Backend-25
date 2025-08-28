@@ -5,11 +5,16 @@ const {
   loginUser,
   refreshAccessToken,
   logoutUser,
+  getCsrfToken, // Import the CSRF token controller
 } = require("../controllers/authController");
 
 const validateToken = require("../../middleware/validateTokenHandler");
 const validateAdmin = require("../../middleware/validateAdminHandler");
 const { validateCsrfToken } = require("../../middleware/validateCsrfToken");
+
+// Add CSRF token endpoint
+router.get("/csrf-token", getCsrfToken);
+
 router.post("/signup", signupUser);
 router.post("/login", loginUser);
 router.post("/refresh", validateCsrfToken, refreshAccessToken);
