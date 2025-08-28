@@ -1,6 +1,9 @@
 const app = require('./app');
-const redis = require('./config/redis');
 const logger = require('./utils/logger');
+const dotenv = require('dotenv');
+
+// Load env from root
+dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 

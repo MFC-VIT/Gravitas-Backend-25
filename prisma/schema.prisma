@@ -13,3 +13,64 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model QuestionCategory {
+  id        String     @id @default(uuid())
+  name      String
+  questions Question[]
+}
+
+model Question {
+  id            String           @id @default(uuid())
+  categoryId    String
+  questionText  String
+  options       Json
+  correctOption String
+  points        Int
+  category      QuestionCategory @relation(fields: [categoryId], references: [id])
+
+  AnswerAttempt AnswerAttempt[]
+}
+
+model AnswerAttempt {
+  id             String   @id @default(uuid())
+  userId         String
+  questionId     String
+  lobbyId        String
+  selectedOption String
+  isCorrect      Boolean
+  answeredAt     DateTime @default(now())
+
+  question Question @relation(fields: [questionId], references: [id])
+}
+
+model Team {
+  id      String       @id @default(uuid())
+  name    String
+  code    String       @unique
+  players TeamPlayer[]
+}
+
+model TeamPlayer {
+  id     String @id @default(uuid())
+  teamId String
+  userId String
+  team   Team   @relation(fields: [teamId], references: [id])
+}
+
+model User {
+  id           Int            @id @default(autoincrement())
+  username     String
+  email        String         @unique
+  password     String
+  role         String         @default("user")
+  refreshToken RefreshToken[]
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
