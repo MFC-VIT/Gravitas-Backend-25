@@ -10,8 +10,8 @@ const {
 const validateToken = require("../../middleware/validateTokenHandler");
 const validateAdmin = require("../../middleware/validateAdminHandler");
 const { validateCsrfToken } = require("../../middleware/validateCsrfToken");
-router.post("/signup", validateCsrfToken, signupUser);
-router.post("/login", validateCsrfToken, loginUser);
+router.post("/signup", signupUser);
+router.post("/login", loginUser);
 router.post("/refresh", validateCsrfToken, refreshAccessToken);
 router.post("/logout", validateToken, validateCsrfToken, logoutUser);
 
