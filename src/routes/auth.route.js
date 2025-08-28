@@ -9,11 +9,11 @@ const {
 
 const validateToken = require("../../middleware/validateTokenHandler");
 const validateAdmin = require("../../middleware/validateAdminHandler");
-
-router.post("/signup", signupUser);
-router.post("/login", loginUser);
-router.post("/refresh", refreshAccessToken);
-router.post("/logout", validateToken, logoutUser);
+const { validateCsrfToken } = require("../../middleware/validateCsrfToken");
+router.post("/signup", validateCsrfToken, signupUser);
+router.post("/login", validateCsrfToken, loginUser);
+router.post("/refresh", validateCsrfToken, refreshAccessToken);
+router.post("/logout", validateToken, validateCsrfToken, logoutUser);
 
 router.get("/profile", validateToken, (req, res) => {
   res.json({ message: "Welcome!", user: req.user });
