@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const jwt =require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const { PrismaClient } = require('../../generated/prisma');
 const prisma = new PrismaClient();
@@ -148,5 +148,21 @@ exports.logoutUser = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get CSRF Token
+exports.getCsrfToken = (req, res) => {
+  try {
+    const csrfToken = req.csrfToken(); // Generate CSRF token
+    res.cookie('csrf', csrfToken, {
+      httpOnly: false, 
+      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+      sameSite: 'Strict' 
+    });
+    res.json({ csrfToken }); 
+  } catch (err) {
+    console.error('CSRF Token Error:', err);
+    res.status(500).json({ message: 'Could not generate CSRF token' });
   }
 };

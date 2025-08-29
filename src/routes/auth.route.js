@@ -1,19 +1,23 @@
 const express = require("express");
+const csrf = require('csurf');
 const router = express.Router();
 const {
   signupUser,
   loginUser,
   refreshAccessToken,
   logoutUser,
-} = require("../controllers/authController");
+  getCsrfToken,
 
+} = require("../controllers/authController");
+const csrfProtection =require("../../middleware/validateCsrfHandler")
 const validateToken = require("../../middleware/validateTokenHandler");
 const validateAdmin = require("../../middleware/validateAdminHandler");
 
-router.post("/signup", signupUser);
-router.post("/login", loginUser);
-router.post("/refresh", refreshAccessToken);
-router.post("/logout", validateToken, logoutUser);
+router.get("/csrf-token",csrfProtection,getCsrfToken);
+router.post("/signup",csrfProtection, signupUser);
+router.post("/login", csrfProtection, loginUser);
+router.post("/refresh",csrfProtection, refreshAccessToken);
+router.post("/logout", csrfProtection, validateToken, logoutUser);
 
 router.get("/profile", validateToken, (req, res) => {
   res.json({ message: "Welcome!", user: req.user });
