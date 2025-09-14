@@ -11,7 +11,11 @@ dotenv.config();
 
 const app = express();
 
-app.use(pinoHttp({ logger }));
+const enablePino =
+  process.env.NODE_ENV !== 'production' && process.env.DISABLE_PINO !== 'true';
+if (enablePino) {
+  app.use(pinoHttp({ logger }));
+}
 
 app.use(express.json());
 app.use(limiter);
@@ -22,7 +26,5 @@ app.use('/teams', teamRoutes);
 
 app.use('/jeopardy/admin', jeopardyadmin);
 app.use('/jeopardy/player', jeopardyplayer);
-
-// (Removed express-oas-generator due to incompatibility with Express 5 stack format)
 
 module.exports = app;
