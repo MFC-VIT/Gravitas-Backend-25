@@ -73,11 +73,9 @@ exports.chooseQuestion = async (req, res) => {
     }
 
     if (!availableQuestions || availableQuestions.length === 0) {
-      return res
-        .status(404)
-        .json({
-          error: 'No questions available for this category and difficulty',
-        });
+      return res.status(404).json({
+        error: 'No questions available for this category and difficulty',
+      });
     }
 
     const randomIndex = Math.floor(Math.random() * availableQuestions.length);
@@ -140,11 +138,9 @@ exports.submitAnswer = async (req, res) => {
     }
 
     if (existingAttempt.selectedOption !== null) {
-      return res
-        .status(400)
-        .json({
-          error: 'This question has already been answered by your team',
-        });
+      return res.status(400).json({
+        error: 'This question has already been answered by your team',
+      });
     }
 
     const { data: question, error: questionError } = await supabase
@@ -206,17 +202,12 @@ exports.getScoreboard = async (req, res) => {
   try {
     const { data: teams, error } = await supabase
       .from('Team')
-      .select('id, name, teamPoints')
+      .select('id, name, teamPoints, code')
       .order('teamPoints', { ascending: false });
-
-    if (error) throw error;
-
-    res.json({
-      message: 'Scoreboard fetched successfully',
-      teams,
-    });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ message: 'Scoreboard fetched successfully', teams });
   } catch (err) {
-    console.error(err);
+    console.error('getScoreboard error', err);
     res.status(500).json({ error: 'Something went wrong' });
   }
 };

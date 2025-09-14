@@ -27,35 +27,47 @@ model Question {
   options       Json
   correctOption String
   points        Int
+  difficulty    Int              @default(1)
   category      QuestionCategory @relation(fields: [categoryId], references: [id])
 
-  AnswerAttempt AnswerAttempt[]
+  attempts AnswerAttempt[]
 }
 
 model AnswerAttempt {
-  id             String   @id @default(uuid())
-  userId         String
-  questionId     String
+  id             String    @id @default(uuid())
+  teamId         String
   lobbyId        String
-  selectedOption String
-  isCorrect      Boolean
-  answeredAt     DateTime @default(now())
+  questionId     String
+  selectedOption String?  @default("")
+  isCorrect      Boolean? @default(false)
+  answeredAt     DateTime?
 
   question Question @relation(fields: [questionId], references: [id])
+  team     Team     @relation(fields: [teamId], references: [id])
 }
 
 model Team {
-  id      String       @id @default(uuid())
-  name    String
-  code    String       @unique
-  players TeamPlayer[]
+  id         String       @id @default(uuid())
+  name       String
+  code       String       @unique
+  leaderId   Int
+  teamPoints Int          @default(0)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  leader     User         @relation("TeamLeader", fields: [leaderId], references: [id])
+  players    TeamPlayer[]
+  attempts   AnswerAttempt[]
 }
 
 model TeamPlayer {
-  id     String @id @default(uuid())
-  teamId String
-  userId String
-  team   Team   @relation(fields: [teamId], references: [id])
+  id       String   @id @default(uuid())
+  teamId   String
+  userId   Int
+  joinedAt DateTime @default(now())
+  team     Team     @relation(fields: [teamId], references: [id])
+  user     User     @relation("TeamMembership", fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
 }
 
 model User {
@@ -65,6 +77,8 @@ model User {
   password     String
   role         String         @default("user")
   refreshToken RefreshToken[]
+  teams        TeamPlayer[]   @relation("TeamMembership")
+  ledTeams     Team[]         @relation("TeamLeader")
 }
 
 model RefreshToken {
