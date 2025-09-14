@@ -23,4 +23,6 @@ app.use('/teams', teamRoutes);
 app.use('/jeopardy/admin', jeopardyadmin);
 app.use('/jeopardy/player', jeopardyplayer);
 
+// (Removed express-oas-generator due to incompatibility with Express 5 stack format)
+
 module.exports = app;

@@ -1,10 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
-
-const supabase = createClient(
-  process.env.SUPABASE_PROJECT,
-  process.env.SUPABASE_ANON_KEY
-);
+const supabase = require('../config/supabase');
 
 function randomCode(length = 6) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
