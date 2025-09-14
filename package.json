@@ -2,7 +2,7 @@
   "name": "Gravitas-Backend-25",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "./src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
@@ -29,6 +29,7 @@
   "packageManager": "pnpm@10.12.1",
   "dependencies": {
     "@prisma/client": "^6.13.0",
+    "@supabase/supabase-js": "^2.57.4",
     "bcryptjs": "^3.0.2",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
