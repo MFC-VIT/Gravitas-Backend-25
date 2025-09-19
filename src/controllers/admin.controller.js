@@ -1,10 +1,5 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+const supabase = require('../../src/config/supabase');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
 exports.viewTeam = async (req, res) => {
   const { userId } = req.body;
 

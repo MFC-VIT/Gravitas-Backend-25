@@ -1,8 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
-const { PrismaClient } = require('../../generated/prisma');
-const prisma = new PrismaClient();
+const supabase = require('../config/supabase');
+// const { supabase } = require('../config/supabase');
 
 // Generate Tokens
 const generateAccessToken = (user) => {
@@ -20,13 +20,18 @@ const generateRefreshToken = async (user) => {
     { expiresIn: '7d' }
   );
 
-  // Store refresh token in DB
-  await prisma.refreshToken.create({
-    data: {
-      token: refreshToken,
-      userId: user.id,
-    },
-  });
+  // Debug: log user.id before insert
+  console.log('Inserting refresh token for user.id:', user.id);
+
+  // Store refresh token in Supabase
+  const { data, error } = await supabase
+    .from('RefreshToken')
+    .insert([{ token: refreshToken, userId: user.id }]);
+  if (error) {
+    console.error('RefreshToken insert error:', error);
+  } else {
+    console.log('RefreshToken insert result:', data);
+  }
 
   return refreshToken;
 };
@@ -42,15 +47,34 @@ exports.signupUser = async (req, res) => {
   const { username, email, password } = req.body;
 
   try {
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser)
+    const { data: existingUser, error: selectError } = await supabase
+      .from('User')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    // Handle "no rows" error gracefully
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error('Supabase select error:', selectError);
+      throw selectError;
+    }
+
+    if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await prisma.user.create({
-      data: { username, email, password: hashedPassword, role: 'user' },
-    });
+    const { data: newUser, error: insertError } = await supabase
+      .from('User')
+      .insert([{ username, email, password: hashedPassword, role: 'user' }]) // no id field
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Supabase insert error:', insertError);
+      throw insertError;
+    }
 
     const accessToken = generateAccessToken(newUser);
     const refreshToken = await generateRefreshToken(newUser);
@@ -66,7 +90,7 @@ exports.signupUser = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(err);
+    console.error('Signup error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -80,7 +104,12 @@ exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const { data: user } = await supabase
+      .from('User')
+      .select('*')
+      .eq('email', email)
+      .single();
+
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -94,7 +123,7 @@ exports.loginUser = async (req, res) => {
       message: 'Login successful',
       accessToken,
       refreshToken,
-      user: { id: user.id, name: user.name, email: user.email },
+      user: { id: user.id, username: user.username, email: user.email },
     });
   } catch (err) {
     console.error(err);
@@ -109,9 +138,12 @@ exports.refreshAccessToken = async (req, res) => {
     return res.status(401).json({ message: 'Refresh token required' });
 
   try {
-    const storedToken = await prisma.refreshToken.findUnique({
-      where: { token: refreshToken },
-    });
+    const { data: storedToken } = await supabase
+      .from('RefreshToken')
+      .select('*')
+      .eq('token', refreshToken)
+      .single();
+
     if (!storedToken)
       return res.status(403).json({ message: 'Invalid refresh token' });
 
@@ -122,7 +154,12 @@ exports.refreshAccessToken = async (req, res) => {
         if (err)
           return res.status(403).json({ message: 'Invalid refresh token' });
 
-        const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+        const { data: dbUser } = await supabase
+          .from('User')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
         if (!dbUser) return res.status(404).json({ message: 'User not found' });
 
         const accessToken = generateAccessToken(dbUser);
@@ -142,7 +179,7 @@ exports.logoutUser = async (req, res) => {
     if (!refreshToken)
       return res.status(400).json({ message: 'Refresh token required' });
 
-    await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
+    await supabase.from('RefreshToken').delete().eq('token', refreshToken);
 
     res.json({ message: 'Logged out successfully' });
   } catch (err) {
