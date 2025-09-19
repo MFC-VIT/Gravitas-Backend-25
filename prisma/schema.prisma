@@ -57,6 +57,7 @@ model Team {
   leader     User         @relation("TeamLeader", fields: [leaderId], references: [id])
   players    TeamPlayer[]
   attempts   AnswerAttempt[]
+  isReadyScotland Boolean @default(false)
 }
 
 model TeamPlayer {
