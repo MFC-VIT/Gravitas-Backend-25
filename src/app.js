@@ -6,6 +6,7 @@ const limiter = require('./utils/rate-limiter');
 const jeopardyadmin = require('../jeopardy/routes/admin.routes.js');
 const jeopardyplayer = require('../jeopardy/routes/player.routes.js');
 const teamRoutes = require('./routes/team.route');
+const swaggerDocs = require('./config/swagger.js');
 
 dotenv.config();
 
@@ -18,11 +19,15 @@ app.use(limiter);
 
 app.use('/health', require('./routes/health.route'));
 app.use('/auth', require('./routes/auth.route'));
+app.use('/player', require('./routes/player.route'));
 app.use('/teams', teamRoutes);
 
 app.use('/jeopardy/admin', jeopardyadmin);
 app.use('/jeopardy/player', jeopardyplayer);
 
 // (Removed express-oas-generator due to incompatibility with Express 5 stack format)
+
+// Swagger Docs
+swaggerDocs(app);
 
 module.exports = app;

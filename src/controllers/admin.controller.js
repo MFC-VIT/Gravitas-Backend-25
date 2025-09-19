@@ -1,53 +1,55 @@
-const supabase = require('../../src/config/supabase');
+//commented because not in use
 
-exports.viewTeam = async (req, res) => {
-  const { userId } = req.body;
+// const supabase = require('../../src/config/supabase');
 
-  try {
-    // Find the team_id for the given user
-    const { data: teamPlayers, error: teamPlayerError } = await supabase
-      .from('TeamPlayer')
-      .select('teamid')
-      .eq('userid', userId)
-      .single();
+// exports.viewTeam = async (req, res) => {
+//   const { userId } = req.body;
 
-    if (teamPlayerError || !teamPlayers) {
-      return res.status(404).json({ error: 'Team not found for user' });
-    }
+//   try {
+//     // Find the team_id for the given user
+//     const { data: teamPlayers, error: teamPlayerError } = await supabase
+//       .from('TeamPlayer')
+//       .select('teamid')
+//       .eq('userid', userId)
+//       .single();
 
-    const teamId = teamPlayers.team_id;
+//     if (teamPlayerError || !teamPlayers) {
+//       return res.status(404).json({ error: 'Team not found for user' });
+//     }
 
-    // Fetch all users from that team
-    const { data: allPlayers, error: allPlayersError } = await supabase
-      .from('teamplayer')
-      .select('userid')
-      .eq('teamid', teamId);
+//     const teamId = teamPlayers.team_id;
 
-    if (allPlayersError) {
-      throw allPlayersError;
-    }
+//     // Fetch all users from that team
+//     const { data: allPlayers, error: allPlayersError } = await supabase
+//       .from('teamplayer')
+//       .select('userid')
+//       .eq('teamid', teamId);
 
-    // Get user details for all user IDs
-    const userIds = allPlayers.map((tp) => tp.user);
+//     if (allPlayersError) {
+//       throw allPlayersError;
+//     }
 
-    const { data: users, error: usersError } = await supabase
-      .from('User')
-      .select('*')
-      .in('id', userIds);
+//     // Get user details for all user IDs
+//     const userIds = allPlayers.map((tp) => tp.user);
 
-    if (usersError) {
-      throw usersError;
-    }
+//     const { data: users, error: usersError } = await supabase
+//       .from('User')
+//       .select('*')
+//       .in('id', userIds);
 
-    res.json({ users });
-  } catch (error) {
-    console.error('Error fetching team users:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
+//     if (usersError) {
+//       throw usersError;
+//     }
 
-// For admin controller
-const { viewTeam } = require('./player.controller');
+//     res.json({ users });
+//   } catch (error) {
+//     console.error('Error fetching team users:', error);
+//     res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// };
 
-// Export as viewTeamHandler for adminRoute.js
-exports.viewTeamHandler = viewTeam;
+// // For admin controller
+// const { viewTeam } = require('./player.controller');
+
+// // Export as viewTeamHandler for adminRoute.js
+// exports.viewTeamHandler = viewTeam;
