@@ -165,6 +165,7 @@ exports.startGame = async (req, res) => {
     console.log('TeamState: ', ready);
 
     // Step 4: Return the ready state and optionally proceed to form the game board
+    //update as well
     res.json({
       message: 'Team ready state fetched successfully',
       team: {
@@ -179,6 +180,7 @@ exports.startGame = async (req, res) => {
     //userId is the user id in the code, and isLeader is if the user is the team leader or not. This has to be checked.
 
     // formGameBoard(lobbyId);
+    //if all teams are ready, then only form the game board
     //to be implemented next
     //work for next time I sit to code
     //uncomment top comment of this comment block, after formgameboard thingy is tested
@@ -248,6 +250,12 @@ async function formGameBoard(lobbyId) {
 }
 exports.getMoveOptions = async (req, res) => {
   //based on the player position, return the possible move options
+  //check the nodes from node data in gameboard
+  //check present position of player from gamestate or movehistory
+  //return the possible move options
+  //take userId as input
+
+  const { userId } = req.body;
 };
 
 exports.makeMove = async (req, res) => {
