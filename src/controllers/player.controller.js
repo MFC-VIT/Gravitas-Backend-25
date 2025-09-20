@@ -1,4 +1,4 @@
-const supabase = require('../../src/config/supabase');
+const supabase = require('../config/supabase');
 
 exports.viewTeam = async (req, res) => {
   const { userId } = req.params;
@@ -93,9 +93,6 @@ exports.viewTeam = async (req, res) => {
   }
 };
 
-//most likely will be seeded into DB, this will be the lobby creation, we won't require an endpoint for this
-//keep this at a very low priority
-
 exports.joinLobby = async (req, res) => {
   //from db, form the lobby, and keep ready for game start
 };
@@ -165,7 +162,6 @@ exports.startGame = async (req, res) => {
     console.log('TeamState: ', ready);
 
     // Step 4: Return the ready state and optionally proceed to form the game board
-    //update as well
     res.json({
       message: 'Team ready state fetched successfully',
       team: {
@@ -174,13 +170,7 @@ exports.startGame = async (req, res) => {
       },
     });
 
-    //get lobbyId from Lobby table, check if user id equals AUserId, BUserId or CUserId or DUserId or FUserId
-    //if yes, get lobbyId and pass it to formGameBoard function
-    //lobbyId is string in Lobby table
-    //userId is the user id in the code, and isLeader is if the user is the team leader or not. This has to be checked.
-
     // formGameBoard(lobbyId);
-    //if all teams are ready, then only form the game board
     //to be implemented next
     //work for next time I sit to code
     //uncomment top comment of this comment block, after formgameboard thingy is tested
@@ -193,75 +183,16 @@ exports.startGame = async (req, res) => {
   }
 };
 
-async function formGameBoard(lobbyId) {
-  const supabase = require('../../src/config/supabase');
-
+exports.formGameBoard = async (req, res) => {
   //position all players on the gameboard, and return the gameboard details
-  //get lobby ID, and fetch the gameboard details, update movehistory and gamestate (check schema from prisma.schema file),
-  //set MR.X to 1, player turn to 1 (first player in team array), p2 to 2 and so on
-  //gameboard has only nodes info and all that, common to all games
-  //check karle movehistory aur gamestate mein kya update aur kahan karna hai, agar schema mein changes laane honge toh (try not to tho)
 
-  // 1. Get all teams in the lobby
-  // Find all teamIds in this lobby via TeamPlayer -> Lobby
-  const { data: teamPlayers, error: tpErr } = await supabase
-    .from('TeamPlayer')
-    .select('teamId, userId, isLeader')
-    .eq('isLeader', true);
-  if (tpErr) throw tpErr;
-  if (!teamPlayers || teamPlayers.length === 0)
-    throw new Error('No team leaders found');
-
-  // 2. Get all teams for these leaders
-  const teamIds = teamPlayers.map((tp) => tp.teamId);
-  const { data: teams, error: teamErr } = await supabase
-    .from('Team')
-    .select('id, leaderId')
-    .in('id', teamIds);
-  if (teamErr) throw teamErr;
-
-  // 3. Filter only teams whose leader is in this lobby (by checking if leader is in teamPlayers)
-  // (Assumes all leaders in teamPlayers are valid for this lobby)
-  // 4. Place Mr.X first (first team leader), others follow
-  const playerOrder = teamPlayers.map((tp, idx) => ({
-    userId: tp.userId,
-    teamId: tp.teamId,
-    order: idx + 1,
-    isMrX: idx === 0,
-  }));
-
-  // 5. Build stateJSON
-  const stateJSON = {
-    players: playerOrder,
-    // add more game state fields as needed
-  };
-
-  // 6. Insert into GameState
-  const { error: gsErr } = await supabase.from('GameState').insert([
-    {
-      lobbyId,
-      stateJSON,
-      currentTurnUserId: playerOrder[0].userId.toString(),
-    },
-  ]);
-  if (gsErr) throw gsErr;
-
-  return stateJSON;
-}
+};
 exports.getMoveOptions = async (req, res) => {
   //based on the player position, return the possible move options
-  //check the nodes from node data in gameboard
-  //check present position of player from gamestate or movehistory
-  //return the possible move options
-  //take userId as input
-
-  const { userId } = req.body;
-
   //Logic: Check for the current current node
   //Go to the db check possible nodes for current node
   //Return Possible Nodes
 };
-
 exports.makeMove = async (req, res) => {
   //Logic: Requests Should have Chose =
   //update the player position in db, and return the updated gameboard details
