@@ -190,10 +190,6 @@ async function formGameBoard(lobbyId) {
   const supabase = require('../../src/config/supabase');
 
   //position all players on the gameboard, and return the gameboard details
-<<<<<<< HEAD:src/controllers/player.controller.js
-
-};
-=======
   //get lobby ID, and fetch the gameboard details, update movehistory and gamestate (check schema from prisma.schema file),
   //set MR.X to 1, player turn to 1 (first player in team array), p2 to 2 and so on
   //gameboard has only nodes info and all that, common to all games
@@ -245,7 +241,6 @@ async function formGameBoard(lobbyId) {
 
   return stateJSON;
 }
->>>>>>> 16ae3e3c7d1ab096bd947392b0a9952abe1d3e5a:scotland-yard/controllers/player.controller.js
 exports.getMoveOptions = async (req, res) => {
   //based on the player position, return the possible move options
   //Logic: Check for the current current node
