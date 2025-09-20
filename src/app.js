@@ -5,6 +5,9 @@ const logger = require('./utils/logger');
 const limiter = require('./utils/rate-limiter');
 const jeopardyadmin = require('../jeopardy/routes/admin.routes.js');
 const jeopardyplayer = require('../jeopardy/routes/player.routes.js');
+const scotlandyardplayer = require('../scotland-yard/routes/player.route.js');
+// const scotlandyardadmin = require('../scotland-yard/routes/admin.route.js');
+
 const teamRoutes = require('./routes/team.route');
 const swaggerDocs = require('./config/swagger.js');
 
@@ -19,9 +22,10 @@ app.use(limiter);
 
 app.use('/health', require('./routes/health.route'));
 app.use('/auth', require('./routes/auth.route'));
-app.use('/player', require('./routes/player.route'));
+
 app.use('/teams', teamRoutes);
 
+app.use('/scotland/player', scotlandyardplayer);
 app.use('/jeopardy/admin', jeopardyadmin);
 app.use('/jeopardy/player', jeopardyplayer);
 

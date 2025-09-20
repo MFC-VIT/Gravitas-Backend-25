@@ -9,6 +9,18 @@ const lobbyController = require('../controllers/admin.controller.js');
  *     summary: Start a new Jeopardy game
  *     tags:
  *       - Jeopardy - Admin
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: integer
+ *                 description: ID of the admin starting the game
+ *             required:
+ *               - userId
  *     responses:
  *       201:
  *         description: Game started successfully

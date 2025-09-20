@@ -23,7 +23,7 @@ const playerControllers = require('../controllers/player.controller');
  *               - lobbyId
  *             properties:
  *               userId:
- *                 type: string
+ *                 type: integer
  *                 example: "user123"
  *               teamId:
  *                 type: string
@@ -72,7 +72,7 @@ router.post('/choose-question', playerControllers.chooseQuestion);
  *               - lobbyId
  *             properties:
  *               userId:
- *                 type: string
+ *                 type: integer
  *                 example: "user123"
  *               teamId:
  *                 type: string

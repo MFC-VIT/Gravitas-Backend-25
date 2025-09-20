@@ -7,14 +7,7 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
 
 /**
  * @swagger
- * tags:
- *   name: Player
- *   description: Player related endpoints
- */
-
-/**
- * @swagger
- * /player/viewTeam/{userId}:
+ * /scotland/player/viewTeam/{userId}:
  *   get:
  *     summary: Get a player's team details
  *     tags: [Player]
@@ -69,7 +62,7 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
 
 /**
  * @swagger
- * /player/startGame/{userId}:
+ * /scotland/player/startGame/{userId}:
  *   get:
  *     summary: Start the game if user is team leader
  *     tags: [Player]
