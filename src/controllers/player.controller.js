@@ -194,6 +194,7 @@ exports.getMoveOptions = async (req, res) => {
   //Return Possible Nodes
 };
 exports.makeMove = async (req, res) => {
+  //Logic: Requests Should have Chose =
   //update the player position in db, and return the updated gameboard details
   //Receive chosen node
   //Log Move details in Player/Team Details
