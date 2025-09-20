@@ -23,6 +23,8 @@ const options = {
     './src/controllers/*.js',
     './jeopardy/routes/*.js',
     './jeopardy/controllers/*.js',
+    './scotland-yard/routes/*.js',
+    './scotland-yard/controllers/*.js',
   ], //UPDATE IF MAKING SEPARATE FOLDER FOR SCOTLAND YARD
   components: {
     securitySchemes: {
