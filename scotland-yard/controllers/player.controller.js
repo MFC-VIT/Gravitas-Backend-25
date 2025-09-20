@@ -173,6 +173,11 @@ exports.startGame = async (req, res) => {
       },
     });
 
+    //get lobbyId from Lobby table, check if user id equals AUserId, BUserId or CUserId or DUserId or FUserId
+    //if yes, get lobbyId and pass it to formGameBoard function
+    //lobbyId is string in Lobby table
+    //userId is the user id in the code, and isLeader is if the user is the team leader or not. This has to be checked.
+
     // formGameBoard(lobbyId);
     //to be implemented next
     //work for next time I sit to code
@@ -244,6 +249,7 @@ async function formGameBoard(lobbyId) {
 exports.getMoveOptions = async (req, res) => {
   //based on the player position, return the possible move options
 };
+
 exports.makeMove = async (req, res) => {
   //update the player position in db, and return the updated gameboard details
 };
