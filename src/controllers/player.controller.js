@@ -185,10 +185,18 @@ exports.startGame = async (req, res) => {
 
 exports.formGameBoard = async (req, res) => {
   //position all players on the gameboard, and return the gameboard details
+
 };
 exports.getMoveOptions = async (req, res) => {
   //based on the player position, return the possible move options
+  //Logic: Check for the current current node
+  //Go to the db check possible nodes for current node
+  //Return Possible Nodes
 };
 exports.makeMove = async (req, res) => {
   //update the player position in db, and return the updated gameboard details
+  //Receive chosen node
+  //Log Move details in Player/Team Details
+  //Change Current Player to the next one
+  //Let them Move
 };
