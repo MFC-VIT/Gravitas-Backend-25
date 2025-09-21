@@ -663,7 +663,7 @@ exports.getMoveOptions = async (req, res) => {
     return res.status(404).json({ error: 'Node data not found' });
   }
 
-  const moveOptions = nodeData.connectedNodes; // Assuming connectedNodes is an array of possible moves
+  const moveOptions = nodeData.connectedNodes; // connectedNodes is an array of possible moves
 
   res.json({ moveOptions });
 
