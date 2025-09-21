@@ -747,6 +747,24 @@ exports.makeMove = async (req, res) => {
       details: updateError.message,
     });
   }
+  // Log move in MoveHistory
+  const { error: mhError } = await supabase.from('MoveHistory').insert([
+    {
+      lobbyId,
+      userId,
+      moveDetails: {
+        from: stateJSON.players[playerIndex].position, // previous position
+        to: chosenNode,
+      },
+      timestamp: new Date().toISOString(),
+    },
+  ]);
+  if (mhError) {
+    return res.status(500).json({
+      error: 'Error logging move history',
+      details: mhError.message,
+    });
+  }
 
   res.json({
     message: 'Move made successfully',
