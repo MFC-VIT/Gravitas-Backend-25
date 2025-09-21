@@ -263,7 +263,6 @@ exports.joinLobby = async (req, res) => {
 //   }
 // };
 
-// Assumes `supabase` is correctly initialized in scope
 exports.startGame = async (req, res) => {
   const { userId: userIdParam } = req.params;
 
@@ -364,6 +363,12 @@ exports.startGame = async (req, res) => {
       lobbyRow.EUserId,
       lobbyRow.FUserId,
     ].filter((id) => id !== null && id !== undefined);
+    // Double check that the current user is indeed a leaderId
+    if (!leadersInLobby.includes(userId)) {
+      return res.status(403).json({
+        error: 'Only team leaders can be in a lobby and play the game',
+      });
+    }
 
     if (leadersInLobby.length === 0) {
       return res.status(400).json({ error: 'No teams/users found in lobby' });
@@ -410,13 +415,10 @@ exports.startGame = async (req, res) => {
     }
 
     // Option A: If formGameBoard is synchronous or returns an object and may modify DB,
-    // await it and handle errors. Replace with your implementation.
+    // await it and handle errors.
     try {
       // Assume formGameBoard returns gameBoard object or throws
       const gameBoard = await formGameBoard(lobbyId); // implement this fn
-      // Optional: persist GameBoard and initial GameState into DB here (transaction recommended)
-      // Example (pseudo):
-      // await supabase.from('GameBoard').insert({ nodeId: ..., connectionsJSON: ..., transportTypes: ... })
     } catch (fgbErr) {
       console.error('formGameBoard error:', fgbErr);
       return res.status(500).json({
@@ -443,62 +445,160 @@ exports.startGame = async (req, res) => {
   }
 };
 
+// async function formGameBoard(lobbyId) {
+//   const supabase = require('../../src/config/supabase');
+//   console.log('Forming game board for lobby:', lobbyId);
+
+//   //position all players on the gameboard, and return the gameboard details
+//   //get lobby ID, and fetch the gameboard details, update movehistory and gamestate (check schema from prisma.schema file),
+//   //set MR.X to 1, player turn to 1 (first player in team array), p2 to 2 and so on
+//   //gameboard has only nodes info and all that, common to all games
+//   //check karle movehistory aur gamestate mein kya update aur kahan karna hai, agar schema mein changes laane honge toh (try not to tho)
+
+//   // 1. Get all teams in the lobby
+//   // Find all teamIds in this lobby via TeamPlayer -> Lobby
+//   const { data: teamPlayers, error: tpErr } = await supabase
+//     .from('TeamPlayer')
+//     .select('teamId, userId, isLeader')
+//     .eq('isLeader', true);
+//   if (tpErr) throw tpErr;
+//   if (!teamPlayers || teamPlayers.length === 0)
+//     throw new Error('No team leaders found');
+
+//   // 2. Get all teams for these leaders
+//   const teamIds = teamPlayers.map((tp) => tp.teamId);
+//   const { data: teams, error: teamErr } = await supabase
+//     .from('Team')
+//     .select('id, leaderId')
+//     .in('id', teamIds);
+//   if (teamErr) throw teamErr;
+
+//   // 3. Filter only teams whose leader is in this lobby (by checking if leader is in teamPlayers)
+//   // (Assumes all leaders in teamPlayers are valid for this lobby)
+//   const validLeaderIds = teamPlayers.map((tp) => tp.userId);
+//   const validTeams = teams.filter((t) => validLeaderIds.includes(t.leaderId));
+//   if (validTeams.length === 0)
+//     throw new Error('No valid teams found for leaders in lobby');
+
+//   console.log('Valid Teams:', validTeams);
+//   console.log('Team Players:', teamPlayers);
+
+//   // Sort teams by leaderId to ensure consistent order
+//   validTeams.sort((a, b) => a.leaderId - b.leaderId);
+//   // Sort teamPlayers by teamId to match validTeams order
+//   teamPlayers.sort((a, b) => a.teamId - b.teamId);
+//   console.log('Sorted Valid Teams:', validTeams);
+//   console.log('Sorted Team Players:', teamPlayers);
+
+//   // 4. Place Mr.X first (first team leader), others follow
+//   const playerOrder = teamPlayers.map((tp, idx) => ({
+//     userId: tp.userId,
+//     teamId: tp.teamId,
+//     order: idx + 1,
+//     isMrX: idx === 0,
+//   }));
+
+//   // 5. Build stateJSON
+//   const stateJSON = {
+//     players: playerOrder,
+//     positions: {}, // to be filled with actual positions
+//     // add more game state fields as needed
+//   };
+//   console.log('playerOrder:', playerOrder);
+//   // 6. Insert into GameState
+//   const { error: gsErr } = await supabase.from('GameState').insert([
+//     {
+//       lobbyId,
+//       stateJSON,
+//       currentTurnUserId: playerOrder[0].userId.toString(),
+//     },
+//   ]);
+//   if (gsErr) throw gsErr;
+//   console.log('GameState initialized:', stateJSON);
+
+//   return stateJSON;
+// }
 async function formGameBoard(lobbyId) {
   const supabase = require('../../src/config/supabase');
   console.log('Forming game board for lobby:', lobbyId);
-
   //position all players on the gameboard, and return the gameboard details
   //get lobby ID, and fetch the gameboard details, update movehistory and gamestate (check schema from prisma.schema file),
   //set MR.X to 1, player turn to 1 (first player in team array), p2 to 2 and so on
   //gameboard has only nodes info and all that, common to all games
   //check karle movehistory aur gamestate mein kya update aur kahan karna hai, agar schema mein changes laane honge toh (try not to tho)
 
-  // 1. Get all teams in the lobby
-  // Find all teamIds in this lobby via TeamPlayer -> Lobby
-  const { data: teamPlayers, error: tpErr } = await supabase
-    .from('TeamPlayer')
-    .select('teamId, userId, isLeader')
-    .eq('isLeader', true);
-  if (tpErr) throw tpErr;
-  if (!teamPlayers || teamPlayers.length === 0)
-    throw new Error('No team leaders found');
+  // 1. Fetch the lobby row to get all 6 user slots
+  const { data: lobbyRow, error: lobbyErr } = await supabase
+    .from('Lobby')
+    .select('AUserId, BUserId, CUserId, DUserId, EUserId, FUserId')
+    .eq('id', lobbyId)
+    .single();
 
-  // 2. Get all teams for these leaders
-  const teamIds = teamPlayers.map((tp) => tp.teamId);
+  if (lobbyErr || !lobbyRow) {
+    console.error('Error fetching lobby users:', lobbyErr);
+    return null;
+  }
+
+  // 2. Collect valid userIds from the lobby row
+  const lobbyUsers = [
+    lobbyRow.AUserId,
+    lobbyRow.BUserId,
+    lobbyRow.CUserId,
+    lobbyRow.DUserId,
+    lobbyRow.EUserId,
+    lobbyRow.FUserId,
+  ].filter((id) => id !== null && id !== undefined);
+
+  if (lobbyUsers.length === 0) {
+    console.error('No users found in this lobby');
+    return null;
+  }
+
+  // 3. Fetch teams whose leaders are in this lobby
   const { data: teams, error: teamErr } = await supabase
     .from('Team')
     .select('id, leaderId')
-    .in('id', teamIds);
-  if (teamErr) throw teamErr;
+    .in('leaderId', lobbyUsers);
 
-  // 3. Filter only teams whose leader is in this lobby (by checking if leader is in teamPlayers)
-  // (Assumes all leaders in teamPlayers are valid for this lobby)
-  // 4. Place Mr.X first (first team leader), others follow
-  const playerOrder = teamPlayers.map((tp, idx) => ({
-    userId: tp.userId,
-    teamId: tp.teamId,
+  if (teamErr) {
+    console.error('Error fetching teams:', teamErr);
+    return null;
+  }
+
+  if (!teams || teams.length === 0) {
+    console.error('No valid teams found for this lobby');
+    return null;
+  }
+
+  // 4. Build the players array from team leaders
+  const players = teams.map((team, idx) => ({
+    userId: team.leaderId,
+    teamId: team.id,
     order: idx + 1,
-    isMrX: idx === 0,
+    isMrX: idx === 0, // First leader = MrX (can randomize if needed)
   }));
 
-  // 5. Build stateJSON
+  // 5. Build the state JSON
   const stateJSON = {
-    players: playerOrder,
-    positions: {}, // to be filled with actual positions
-    // add more game state fields as needed
+    players,
+    positions: {}, // Positions can be filled later as needed
   };
-  console.log('playerOrder:', playerOrder);
-  // 6. Insert into GameState
+
+  // 6. Insert into GameState table
   const { error: gsErr } = await supabase.from('GameState').insert([
     {
       lobbyId,
       stateJSON,
-      currentTurnUserId: playerOrder[0].userId.toString(),
+      currentTurnUserId: players[0].userId.toString(),
     },
   ]);
-  if (gsErr) throw gsErr;
-  console.log('GameState initialized:', stateJSON);
 
+  if (gsErr) {
+    console.error('Error creating GameState:', gsErr);
+    return null;
+  }
+
+  console.log('GameState initialized:', stateJSON);
   return stateJSON;
 }
 
@@ -619,6 +719,19 @@ exports.makeMove = async (req, res) => {
   // Determine next player's turn
   const nextPlayerIndex = (playerIndex + 1) % stateJSON.players.length;
   const nextTurnUserId = stateJSON.players[nextPlayerIndex].userId.toString();
+
+  // Before inserting into MoveHistory
+  const { data: teamCheck } = await supabase
+    .from('Team')
+    .select('leaderId')
+    .eq('leaderId', userId)
+    .single();
+
+  if (!teamCheck) {
+    return res.status(403).json({
+      error: 'Only team leaders can play and record moves',
+    });
+  }
 
   // Update GameState in DB
   const { error: updateError } = await supabase
