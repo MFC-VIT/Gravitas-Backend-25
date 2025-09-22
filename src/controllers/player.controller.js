@@ -1,4 +1,4 @@
-const supabase = require('../config/db');
+const supabase = require('../config/supabase');
 
 exports.viewTeam = async (req, res) => {
   const { userId } = req.params;
@@ -8,7 +8,7 @@ exports.viewTeam = async (req, res) => {
     const { data: teamPlayers, error: teamPlayerError } = await supabase
       .from('TeamPlayer')
       .select('teamId')
-      .eq('userid', userId);
+      .eq('userId', userId);
 
     if (teamPlayerError || !teamPlayers || teamPlayers.length === 0) {
       return res.status(404).json({
@@ -17,7 +17,7 @@ exports.viewTeam = async (req, res) => {
       });
     }
 
-    const teamId = teamPlayers[0].team_id;
+    const teamId = teamPlayers[0].teamId;
 
     //Step2: Fetch team name
     const { data: teamData, error: nameerror } = await supabase
@@ -26,9 +26,10 @@ exports.viewTeam = async (req, res) => {
       .eq('id', teamId);
 
     if (nameerror) {
+      console.error('Error fetching team name/code:', nameerror);
       return res.status(500).json({
         error: 'Error fetching team name/code',
-        details: nameerror.details,
+        details: nameerror.details || nameerror.message || nameerror,
       });
     }
 
@@ -51,7 +52,7 @@ exports.viewTeam = async (req, res) => {
       });
     }
 
-    const userIds = allPlayers.map((tp) => tp.user);
+    const userIds = allPlayers.map((tp) => tp.userId);
 
     // Step 4: Get user details from correct table and column
     // Debug: Log userIds and check table/column names
@@ -184,10 +185,19 @@ exports.startGame = async (req, res) => {
 
 exports.formGameBoard = async (req, res) => {
   //position all players on the gameboard, and return the gameboard details
+
 };
 exports.getMoveOptions = async (req, res) => {
   //based on the player position, return the possible move options
+  //Logic: Check for the current current node
+  //Go to the db check possible nodes for current node
+  //Return Possible Nodes
 };
 exports.makeMove = async (req, res) => {
+  //Logic: Requests Should have Chose =
   //update the player position in db, and return the updated gameboard details
+  //Receive chosen node
+  //Log Move details in Player/Team Details
+  //Change Current Player to the next one
+  //Let them Move
 };
