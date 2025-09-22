@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -41,9 +35,13 @@ model AnswerAttempt {
   selectedOption String?  @default("")
   isCorrect      Boolean? @default(false)
   answeredAt     DateTime?
+  categoryId     String?
+  difficulty     String?
 
   question Question @relation(fields: [questionId], references: [id])
   team     Team     @relation(fields: [teamId], references: [id])
+  lobby    Lobby    @relation(fields: [lobbyId], references: [id])
+  category QuestionCategory? @relation(fields: [categoryId], references: [id])
 }
 
 model Team {
@@ -54,6 +52,8 @@ model Team {
   teamPoints Int          @default(0)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+  isReadyScotland Boolean @default(false)
+
   leader     User         @relation("TeamLeader", fields: [leaderId], references: [id])
   players    TeamPlayer[]
   attempts   AnswerAttempt[]
@@ -63,7 +63,9 @@ model TeamPlayer {
   id       String   @id @default(uuid())
   teamId   String
   userId   Int
-  joinedAt DateTime @default(now())
+  isAdmin  Boolean  @default(false)
+  isLeader Boolean  @default(false)
+
   team     Team     @relation(fields: [teamId], references: [id])
   user     User     @relation("TeamMembership", fields: [userId], references: [id])
 
@@ -79,6 +81,7 @@ model User {
   refreshToken RefreshToken[]
   teams        TeamPlayer[]   @relation("TeamMembership")
   ledTeams     Team[]         @relation("TeamLeader")
+  moveHistory  MoveHistory[]
 }
 
 model RefreshToken {
@@ -87,4 +90,43 @@ model RefreshToken {
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model Lobby {
+  id        String      @id @default(uuid())
+  isStarted Boolean     @default(false)
+  createdAt DateTime    @default(now())
+
+  gameState GameState?
+  moveHistory MoveHistory[]
+  answerAttempts AnswerAttempt[]
+}
+
+model GameState {
+  id             String   @id @default(uuid())
+  lobbyId        String
+  stateJSON      Json
+  currentTurnUserId String
+  lastUpdated    DateTime @default(now())
+
+  lobby          Lobby    @relation(fields: [lobbyId], references: [id])
+}
+
+model MoveHistory {
+  id         String   @id @default(uuid())
+  userId     Int
+  lobbyId    String
+  moveJSON   Json
+  roundNumber Int
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+  lobby      Lobby    @relation(fields: [lobbyId], references: [id])
+}
+
+model GameBoard {
+  id             String @id @default(uuid())
+  nodeId         Int
+  connectionsJSON Json
+  transportTypes Json
 }
