@@ -442,6 +442,7 @@ exports.getMoveOptions = async (req, res) => {
   //Return Possible Nodes
 };
 exports.makeMove = async (req, res) => {
+  // check DB for balance, make move only if possible
   const { userId, lobbyId, chosenNode } = req.body;
 
   if (!userId || !lobbyId || !chosenNode) {
@@ -511,68 +512,60 @@ exports.makeMove = async (req, res) => {
     // OK
   } else if (moveOptions && Array.isArray(moveOptions.nodes)) {
     moveOptions = moveOptions.nodes;
+  } else if (moveOptions && typeof moveOptions === 'object') {
+    // Support connectionsJSON as an object with keys (buses, subways, taxies)
+    moveOptions = Object.values(moveOptions).filter(Array.isArray).flat();
   } else if (typeof moveOptions === 'string') {
-    // Robust error handling for connectionsJSON
-    if (Array.isArray(moveOptions)) {
-      // OK
-    } else if (moveOptions && Array.isArray(moveOptions.nodes)) {
-      moveOptions = moveOptions.nodes;
-    } else if (typeof moveOptions === 'string') {
-      try {
-        const parsed = JSON.parse(moveOptions);
-        if (Array.isArray(parsed)) {
-          moveOptions = parsed;
-        } else if (parsed && Array.isArray(parsed.nodes)) {
-          moveOptions = parsed.nodes;
-        } else {
-          return res.status(500).json({
-            error:
-              'connectionsJSON string is valid JSON but does not contain an array or nodes array',
-            details: { value: moveOptions },
-          });
-        }
-      } catch (error) {
-        return res.status(500).json({
-          error: 'connectionsJSON is not valid JSON',
-          details: { value: moveOptions, parseError: error.message },
-        });
-      }
-    } else if (moveOptions === null || moveOptions === undefined) {
-      return res.status(500).json({
-        error: 'connectionsJSON is null or undefined',
-        details: { value: moveOptions },
-      });
-    } else {
-      return res.status(500).json({
-        error: 'connectionsJSON is not an array or object with nodes array',
-        details: { value: moveOptions },
-      });
-    }
     try {
       const parsed = JSON.parse(moveOptions);
       if (Array.isArray(parsed)) {
         moveOptions = parsed;
       } else if (parsed && Array.isArray(parsed.nodes)) {
         moveOptions = parsed.nodes;
+      } else if (parsed && typeof parsed === 'object') {
+        moveOptions = Object.values(parsed).filter(Array.isArray).flat();
       } else {
-        return res
-          .status(500)
-          .json({ error: 'connectionsJSON string does not contain an array' });
+        return res.status(500).json({
+          error:
+            'connectionsJSON string is valid JSON but does not contain an array, nodes array, or transport arrays',
+          details: { value: moveOptions },
+        });
       }
-    } catch (e) {
-      return res
-        .status(500)
-        .json({ error: 'connectionsJSON is not a valid array or JSON' });
+    } catch (error) {
+      return res.status(500).json({
+        error: 'connectionsJSON is not valid JSON',
+        details: { value: moveOptions, parseError: error.message },
+      });
     }
+  } else if (moveOptions === null || moveOptions === undefined) {
+    return res.status(500).json({
+      error: 'connectionsJSON is null or undefined',
+      details: { value: moveOptions },
+    });
   } else {
-    return res.status(500).json({ error: 'connectionsJSON is not an array' });
+    return res.status(500).json({
+      error:
+        'connectionsJSON is not an array, object with nodes array, or transport arrays',
+      details: { value: moveOptions },
+    });
   }
 
+  // Output chosenNode and possible nodes before validating
+  console.log('Chosen node:', chosenNode);
+  console.log('Possible nodes:', moveOptions);
+  // Optionally, also send in response for debugging
+  res.locals.chosenNode = chosenNode;
+  res.locals.possibleNodes = moveOptions;
+
   // Validate chosenNode is a valid move
-  if (!moveOptions.includes(chosenNode)) {
-    return res
-      .status(400)
-      .json({ error: 'Invalid move: chosen node is not a valid option' });
+  if (!moveOptions.includes(Number(chosenNode))) {
+    return res.status(400).json({
+      error: 'Invalid move: chosen node is not a valid option',
+      chosenNode,
+      possibleNodes: moveOptions,
+      userId,
+      lobbyId,
+    });
   }
 
   // Update player position in stateJSON.positions
@@ -580,11 +573,16 @@ exports.makeMove = async (req, res) => {
 
   // Determine next player's turn
   const playerIds = stateJSON.players.map((p) => p.userId);
-  const currentPlayerIdx = playerIds.indexOf(userId);
+  const currentPlayerIdx = playerIds.indexOf(Number(userId));
   if (currentPlayerIdx === -1) {
-    return res
-      .status(500)
-      .json({ error: 'Current player not found in player list' });
+    return res.status(500).json({
+      error: 'Current player not found in player list',
+      userId,
+      lobbyId,
+      chosenNode,
+      playerIds,
+      statePlayers: stateJSON.players,
+    });
   }
   const nextPlayerIndex = (currentPlayerIdx + 1) % playerIds.length;
   const nextTurnUserId = playerIds[nextPlayerIndex].toString();
