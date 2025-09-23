@@ -579,9 +579,19 @@ async function formGameBoard(lobbyId) {
   }));
 
   // 5. Build the state JSON
+  // Assign initial positions 1,2,3,4,5,6 to players 1,2,3,4,5,6
+  // Dynamically assign positions to userIds
+  const positions = {};
+  players.forEach((p, idx) => {
+    positions[p.userId] = {
+      userId: p.userId,
+      position: idx + 1,
+    };
+  });
   const stateJSON = {
     players,
-    positions: {}, // Positions can be filled later as needed
+    positions,
+    // add more game state fields as needed
   };
 
   // 6. Insert into GameState table
@@ -634,23 +644,20 @@ exports.getMoveOptions = async (req, res) => {
   if (currentTurnUserId !== userId.toString()) {
     return res.status(403).json({ error: "It's not your turn" });
   }
-  // Find the player in stateJSON
-  const player = stateJSON.players.find(
-    (p) => p.userId.toString() === userId.toString()
-  );
-  if (!player) {
-    return res.status(404).json({ error: 'Player not found in game state' });
-  }
 
-  const currentPosition = player.position;
-  if (!currentPosition) {
-    return res.status(400).json({ error: 'Player position not set' });
+  // Get the player's position from the positions object
+  const playerPositionObj = stateJSON.positions[userId];
+  if (!playerPositionObj || !playerPositionObj.position) {
+    return res
+      .status(404)
+      .json({ error: 'Player position not found in game state' });
   }
+  const currentPosition = playerPositionObj.position;
 
-  // Fetch possible move options from NodeData table based on current position
+  // Fetch possible move options from GameBoard table based on current position
   const { data: nodeData, error: nodeError } = await supabase
-    .from('NodeData')
-    .select('connectedNodes')
+    .from('GameBoard')
+    .select('connectionsJSON')
     .eq('nodeId', currentPosition)
     .single();
   if (nodeError) {
@@ -663,7 +670,7 @@ exports.getMoveOptions = async (req, res) => {
     return res.status(404).json({ error: 'Node data not found' });
   }
 
-  const moveOptions = nodeData.connectedNodes; // connectedNodes is an array of possible moves
+  const moveOptions = nodeData.connectionsJSON; // connectionsJSON is an array of possible moves
 
   res.json({ moveOptions });
 
@@ -713,12 +720,47 @@ exports.makeMove = async (req, res) => {
     return res.status(404).json({ error: 'Player not found in game state' });
   }
 
-  // Update player position
-  stateJSON.players[playerIndex].position = chosenNode;
+  // Get the player's current position from stateJSON.positions
+  const playerPositionObj = stateJSON.positions[userId];
+  if (!playerPositionObj || !playerPositionObj.position) {
+    return res
+      .status(404)
+      .json({ error: 'Player position not found in game state' });
+  }
+  const currentPosition = playerPositionObj.position;
+
+  // Fetch possible move options from GameBoard table based on current position
+  const { data: nodeData, error: nodeError } = await supabase
+    .from('GameBoard')
+    .select('connectionsJSON')
+    .eq('nodeId', currentPosition)
+    .single();
+  if (nodeError) {
+    return res.status(500).json({
+      error: 'Error fetching node data',
+      details: nodeError.message,
+    });
+  }
+  if (!nodeData) {
+    return res.status(404).json({ error: 'Node data not found' });
+  }
+  const moveOptions = nodeData.connectionsJSON;
+
+  // Validate chosenNode is a valid move
+  if (!moveOptions.includes(chosenNode)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid move: chosen node is not a valid option' });
+  }
+
+  // Update player position in stateJSON.positions
+  stateJSON.positions[userId].position = chosenNode;
 
   // Determine next player's turn
-  const nextPlayerIndex = (playerIndex + 1) % stateJSON.players.length;
-  const nextTurnUserId = stateJSON.players[nextPlayerIndex].userId.toString();
+  const playerIds = stateJSON.players.map((p) => p.userId);
+  const currentPlayerIdx = playerIds.indexOf(userId);
+  const nextPlayerIndex = (currentPlayerIdx + 1) % playerIds.length;
+  const nextTurnUserId = playerIds[nextPlayerIndex].toString();
 
   // Before inserting into MoveHistory
   const { data: teamCheck } = await supabase
@@ -752,11 +794,12 @@ exports.makeMove = async (req, res) => {
     {
       lobbyId,
       userId,
-      moveDetails: {
-        from: stateJSON.players[playerIndex].position, // previous position
+      moveJSON: {
+        from: currentPosition,
         to: chosenNode,
       },
-      timestamp: new Date().toISOString(),
+      roundNumber: 0, // You may want to increment this properly
+      createdAt: new Date().toISOString(),
     },
   ]);
   if (mhError) {
