@@ -14,8 +14,15 @@ const swaggerDocs = require('./config/swagger.js');
 dotenv.config();
 
 const app = express();
+const enablePino =
+  process.env.NODE_ENV !== 'production' &&
+  process.env.DISABLE_PINO !== 'true' &&
+  process.env.DISABLE_LOGS !== 'true';
+if (enablePino) {
+  app.use(pinoHttp({ logger }));
+}
 
-app.use(pinoHttp({ logger }));
+// app.use(pinoHttp({ logger }));
 
 app.use(express.json());
 app.use(limiter);
@@ -29,9 +36,6 @@ app.use('/scotland/player', scotlandyardplayer);
 app.use('/jeopardy/admin', jeopardyadmin);
 app.use('/jeopardy/player', jeopardyplayer);
 
-// (Removed express-oas-generator due to incompatibility with Express 5 stack format)
-
-// Swagger Docs
 swaggerDocs(app);
 
 module.exports = app;

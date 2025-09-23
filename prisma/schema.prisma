@@ -9,9 +9,10 @@ datasource db {
 }
 
 model QuestionCategory {
-  id        String     @id @default(uuid())
+  id        String          @id @default(uuid())
   name      String
   questions Question[]
+  attempts  AnswerAttempt[]   // opposite side of AnswerAttempt.category
 }
 
 model Question {
@@ -22,9 +23,9 @@ model Question {
   correctOption String
   points        Int
   difficulty    Int              @default(1)
-  category      QuestionCategory @relation(fields: [categoryId], references: [id])
 
-  attempts AnswerAttempt[]
+  category      QuestionCategory @relation(fields: [categoryId], references: [id])
+  attempts      AnswerAttempt[]
 }
 
 model AnswerAttempt {
@@ -32,15 +33,15 @@ model AnswerAttempt {
   teamId         String
   lobbyId        String
   questionId     String
-  selectedOption String?  @default("")
-  isCorrect      Boolean? @default(false)
+  selectedOption String?   @default("")
+  isCorrect      Boolean?  @default(false)
   answeredAt     DateTime?
   categoryId     String?
   difficulty     String?
 
-  question Question @relation(fields: [questionId], references: [id])
-  team     Team     @relation(fields: [teamId], references: [id])
-  lobby    Lobby    @relation(fields: [lobbyId], references: [id])
+  question Question          @relation(fields: [questionId], references: [id])
+  team     Team              @relation(fields: [teamId], references: [id])
+  lobby    Lobby             @relation(fields: [lobbyId], references: [id])
   category QuestionCategory? @relation(fields: [categoryId], references: [id])
 }
 
@@ -93,35 +94,35 @@ model RefreshToken {
 }
 
 model Lobby {
-  id        String      @id @default(uuid())
-  isStarted Boolean     @default(false)
-  createdAt DateTime    @default(now())
+  id             String         @id @default(uuid())
+  isStarted      Boolean        @default(false)
+  createdAt      DateTime       @default(now())
 
-  gameState GameState?
-  moveHistory MoveHistory[]
+  gameState      GameState?
+  moveHistory    MoveHistory[]
   answerAttempts AnswerAttempt[]
 }
 
 model GameState {
-  id             String   @id @default(uuid())
-  lobbyId        String
-  stateJSON      Json
+  id               String   @id @default(uuid())
+  lobbyId          String   @unique 
+  stateJSON        Json
   currentTurnUserId String
-  lastUpdated    DateTime @default(now())
+  lastUpdated      DateTime @default(now())
 
-  lobby          Lobby    @relation(fields: [lobbyId], references: [id])
+  lobby            Lobby    @relation(fields: [lobbyId], references: [id])
 }
 
 model MoveHistory {
-  id         String   @id @default(uuid())
-  userId     Int
-  lobbyId    String
-  moveJSON   Json
+  id          String   @id @default(uuid())
+  userId      Int
+  lobbyId     String
+  moveJSON    Json
   roundNumber Int
-  createdAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id])
-  lobby      Lobby    @relation(fields: [lobbyId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+  lobby       Lobby    @relation(fields: [lobbyId], references: [id])
 }
 
 model GameBoard {
