@@ -104,6 +104,7 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
 router.get('/viewTeam/:userId', playerController.viewTeam);
 router.get('/startGame/:userId', playerController.startGame);
 router.get('/getMove', playerController.getMoveOptions);
+router.post('/makeMove', playerController.makeMove);
 
 module.exports = router;
 
