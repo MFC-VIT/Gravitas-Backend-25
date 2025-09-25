@@ -19,7 +19,7 @@ const cors = require('../middleware/cors.js');
 dotenv.config();
 
 const app = express();
-app.use(cors);
+app.use(cors());
 
 const enablePino =
   process.env.NODE_ENV !== 'production' &&
