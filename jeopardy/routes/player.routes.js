@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const playerControllers = require('../controllers/player.controller');
+const validateToken = require('../../middleware/validateTokenHandler');
 
 /**
  * @swagger
@@ -72,7 +73,11 @@ const playerControllers = require('../controllers/player.controller');
  *       500:
  *         description: Server error
  */
-router.post('/choose-question', playerControllers.chooseQuestion);
+router.post(
+  '/choose-question',
+  validateToken,
+  playerControllers.chooseQuestion
+);
 
 /**
  * @swagger
@@ -140,7 +145,7 @@ router.post('/choose-question', playerControllers.chooseQuestion);
  *       500:
  *         description: Server error
  */
-router.post('/submit-answer', playerControllers.submitAnswer);
+router.post('/submit-answer', validateToken, playerControllers.submitAnswer);
 
 /**
  * @swagger
@@ -184,6 +189,6 @@ router.post('/submit-answer', playerControllers.submitAnswer);
  *       500:
  *         description: Server error
  */
-router.get('/scoreboard', playerControllers.getScoreboard);
+router.get('/scoreboard', validateToken, playerControllers.getScoreboard);
 
 module.exports = router;

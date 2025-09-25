@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const lobbyController = require('../controllers/admin.controller.js');
+const validateToken = require('../../middleware/validateTokenHandler');
+const validateAdmin = require('../../middleware/validateAdminHandler');
 
 /**
  * @swagger
@@ -47,6 +49,6 @@ const lobbyController = require('../controllers/admin.controller.js');
  *       500:
  *         description: Server error
  */
-router.post('/start', lobbyController.startGame);
+router.post('/start', validateToken, validateAdmin, lobbyController.startGame);
 
 module.exports = router;

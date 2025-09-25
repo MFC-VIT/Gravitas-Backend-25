@@ -7,6 +7,10 @@ const jeopardyadmin = require('../jeopardy/routes/admin.routes.js');
 const jeopardyplayer = require('../jeopardy/routes/player.routes.js');
 const scotlandyardplayer = require('../scotland-yard/routes/player.route.js');
 const scotlandyardadmin = require('../scotland-yard/routes/admin.route.js');
+// const scotlandyardadmin = require('../scotland-yard/routes/admin.route.js');
+const hackathonplayer = require('../hack_portal/routes/player.routes.js');
+const hackathonadmin = require('../hack_portal/routes/admin.routes.js');
+
 const teamRoutes = require('./routes/team.route');
 const swaggerDocs = require('./config/swagger.js');
 
@@ -25,8 +29,6 @@ if (enablePino) {
   app.use(pinoHttp({ logger }));
 }
 
-// app.use(pinoHttp({ logger }));
-
 app.use(express.json());
 app.use(limiter);
 
@@ -39,6 +41,8 @@ app.use('/scotland/player', scotlandyardplayer);
 app.use('/scotland/admin', scotlandyardadmin);
 app.use('/jeopardy/admin', jeopardyadmin);
 app.use('/jeopardy/player', jeopardyplayer);
+app.use('/hackathon/player', hackathonplayer);
+app.use('/hackathon/admin', hackathonadmin);
 
 swaggerDocs(app);
 
