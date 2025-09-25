@@ -7,13 +7,15 @@ const jeopardyadmin = require('../jeopardy/routes/admin.routes.js');
 const jeopardyplayer = require('../jeopardy/routes/player.routes.js');
 const scotlandyardplayer = require('../scotland-yard/routes/player.route.js');
 const scotlandyardadmin = require('../scotland-yard/routes/admin.route.js');
-
 const teamRoutes = require('./routes/team.route');
 const swaggerDocs = require('./config/swagger.js');
+const cors = require('../middleware/CORS');
 
 dotenv.config();
 
 const app = express();
+app.use(cors);
+
 const enablePino =
   process.env.NODE_ENV !== 'production' &&
   process.env.DISABLE_PINO !== 'true' &&
