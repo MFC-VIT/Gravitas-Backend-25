@@ -10,7 +10,7 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
  * /scotland/player/viewTeam/{userId}:
  *   get:
  *     summary: Get a player's team details
- *     tags: [Player]
+ *     tags: [Scotland Yard - Player]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -39,10 +39,10 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
  *                       example: [101, 102, 103]
  *                     teamname:
  *                       type: string
- *                       example: Avengers
+ *                       example: "Avengers"
  *                     teamcode:
  *                       type: string
- *                       example: TEAM123
+ *                       example: "TEAM123"
  *                     teamleader:
  *                       type: integer
  *                       example: 101
@@ -50,10 +50,22 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
  *                   type: array
  *                   items:
  *                     type: object
- *                   example:
- *                     - id: 101
- *                       username: "Tony"
- *                       email: "tony@avengers.com"
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 101
+ *                       username:
+ *                         type: string
+ *                         example: "Tony"
+ *                       email:
+ *                         type: string
+ *                         example: "tony@avengers.com"
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
  *       404:
  *         description: Team not found for user
  *       500:
@@ -65,7 +77,7 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
  * /scotland/player/startGame/{userId}:
  *   get:
  *     summary: Start the game if user is team leader
- *     tags: [Player]
+ *     tags: [Scotland Yard - Player]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -83,27 +95,160 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Team ready state fetched successfully
+ *                   example: All teams are ready. Game board formed.
  *                 team:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: integer
  *                       example: 12
- *                     isReadyScotland:
+ *                     previousIsReady:
+ *                       type: boolean
+ *                       example: false
+ *                     currentIsReady:
  *                       type: boolean
  *                       example: true
+ *                 lobbyId:
+ *                   type: string
+ *                   example: "lobby-uuid-123"
+ *       400:
+ *         description: Invalid userId parameter or no teams found
  *       403:
  *         description: User is not the team leader
  *       404:
- *         description: Team not found
+ *         description: Team not found or lobby not found
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @swagger
+ * /scotland/player/getMove:
+ *   post:
+ *     summary: Get possible move options for the current player
+ *     tags: [Scotland Yard - Player]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - lobbyId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 example: "1"
+ *               lobbyId:
+ *                 type: string
+ *                 example: "6d8e0c0d-b59c-4f45-8431-cc356349ff5c"
+ *     responses:
+ *       200:
+ *         description: Move options fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 moveOptions:
+ *                   type: object
+ *                   properties:
+ *                     buses:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                       example: [46, 58]
+ *                     subways:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                       example: [46]
+ *                     taxies:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                       example: [8, 9]
+ *       403:
+ *         description: Not your turn
+ *       404:
+ *         description: Game state not found or player position not found
+ *       500:
+ *         description: Error fetching game state or node data
+ */
+
+/**
+ * @swagger
+ * /scotland/player/makeMove:
+ *   post:
+ *     summary: Make a move to a chosen node
+ *     tags: [Scotland Yard - Player]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - lobbyId
+ *               - chosenNode
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 example: "1"
+ *               lobbyId:
+ *                 type: string
+ *                 example: "6d8e0c0d-b59c-4f45-8431-cc356349ff5c"
+ *               chosenNode:
+ *                 type: string
+ *                 example: "8"
+ *     responses:
+ *       200:
+ *         description: Move made successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Move made successfully
+ *       400:
+ *         description: Invalid move or missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Invalid move - chosen node is not a valid option
+ *                 chosenNode:
+ *                   type: string
+ *                   example: "8"
+ *                 possibleNodes:
+ *                   type: array
+ *                   items:
+ *                     type: integer
+ *                   example: [46, 58, 8, 9]
+ *                 userId:
+ *                   type: string
+ *                   example: "1"
+ *                 lobbyId:
+ *                   type: string
+ *                   example: "6d8e0c0d-b59c-4f45-8431-cc356349ff5c"
+ *       403:
+ *         description: Not your turn or not a team leader
+ *       404:
+ *         description: Game state not found or player not found
  *       500:
  *         description: Internal server error
  */
 
 router.get('/viewTeam/:userId', playerController.viewTeam);
 router.get('/startGame/:userId', playerController.startGame);
-router.get('/getMove', playerController.getMoveOptions);
+router.post('/getMove', playerController.getMoveOptions);
 router.post('/makeMove', playerController.makeMove);
 
 module.exports = router;

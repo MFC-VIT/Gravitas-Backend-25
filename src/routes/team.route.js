@@ -7,7 +7,7 @@ const controller = require('../controllers/team.controller');
  * @swagger
  * tags:
  *   name: Teams
- *   description: Team management APIs
+ *   description: Team management APIs - create, join, leave, transfer leadership, manage members
  */
 
 /**
@@ -33,10 +33,31 @@ const controller = require('../controllers/team.controller');
  *     responses:
  *       201:
  *         description: Team created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Team created successfully
+ *                 team:
+ *                   $ref: '#/components/schemas/Team'
+ *                 code:
+ *                   type: string
+ *                   example: ABC123
  *       400:
  *         description: Team name required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 
 /**
