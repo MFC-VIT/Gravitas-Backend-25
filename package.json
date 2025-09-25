@@ -28,7 +28,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.12.1",
   "dependencies": {
-    "@prisma/client": "^6.13.0",
+    "@prisma/client": "^6.16.2",
     "@supabase/supabase-js": "^2.57.4",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -60,7 +60,7 @@
     "lint-staged": "^16.1.2",
     "pino-pretty": "^13.1.1",
     "prettier": "^3.6.2",
-    "prisma": "^6.13.0",
+    "prisma": "^6.16.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   }

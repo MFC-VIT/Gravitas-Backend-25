@@ -12,7 +12,7 @@ const controller = require('../controllers/team.controller');
 
 /**
  * @swagger
- * /team/create:
+ * /teams/create:
  *   post:
  *     summary: Create a new team
  *     tags: [Teams]
@@ -62,7 +62,7 @@ const controller = require('../controllers/team.controller');
 
 /**
  * @swagger
- * /team/join:
+ * /teams/join:
  *   post:
  *     summary: Join an existing team with a code
  *     tags: [Teams]
@@ -93,7 +93,7 @@ const controller = require('../controllers/team.controller');
 
 /**
  * @swagger
- * /team/leave:
+ * /teams/leave:
  *   post:
  *     summary: Leave a team (deletes team if empty or transfers leadership if leader)
  *     tags: [Teams]
@@ -122,7 +122,7 @@ const controller = require('../controllers/team.controller');
 
 /**
  * @swagger
- * /team/members:
+ * /teams/members:
  *   get:
  *     summary: Get all members of a team
  *     tags: [Teams]
@@ -148,7 +148,7 @@ const controller = require('../controllers/team.controller');
 
 /**
  * @swagger
- * /team/transfer:
+ * /teams/transfer:
  *   post:
  *     summary: Transfer leadership to another member
  *     tags: [Teams]
@@ -183,7 +183,7 @@ const controller = require('../controllers/team.controller');
 
 /**
  * @swagger
- * /team/kick:
+ * /teams/kick:
  *   post:
  *     summary: Kick a member from the team (leader only)
  *     tags: [Teams]
