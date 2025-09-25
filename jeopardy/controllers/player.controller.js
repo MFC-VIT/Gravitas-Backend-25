@@ -4,7 +4,7 @@ exports.chooseQuestion = async (req, res) => {
   try {
     const { userId, teamId, categoryId, difficulty, lobbyId } = req.body;
 
-    const { data: lobby, error: lobbyError } = await supabase
+    /*const { data: lobby, error: lobbyError } = await supabase
       .from('JeopardyLobby')
       .select('isStarted')
       .eq('id', lobbyId)
@@ -16,7 +16,7 @@ exports.chooseQuestion = async (req, res) => {
     if (!lobby.isStarted) {
       return res.status(403).json({ error: 'Game has not started yet' });
     }
-
+    */
     const { data: player, error: playerError } = await supabase
       .from('TeamPlayer')
       .select('id, isLeader')

@@ -103,7 +103,7 @@ router.post(
  *       500:
  *         description: Server error
  */
-router.post('/submit-answer', validateToken, playerControllers.submitAnswer);
+router.post('/submit-answer', playerControllers.submitAnswer);
 
 /**
  * @openapi
@@ -118,6 +118,6 @@ router.post('/submit-answer', validateToken, playerControllers.submitAnswer);
  *       500:
  *         description: Server error
  */
-router.get('/scoreboard', validateToken, playerControllers.getScoreboard);
+router.get('/scoreboard', playerControllers.getScoreboard);
 
 module.exports = router;
