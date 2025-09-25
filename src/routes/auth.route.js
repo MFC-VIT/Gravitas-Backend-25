@@ -12,10 +12,17 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
 
 /**
  * @swagger
+ * tags:
+ *   name: Authentication
+ *   description: User authentication APIs - signup, login, logout, token refresh
+ */
+
+/**
+ * @swagger
  * /auth/signup:
  *   post:
  *     summary: Register a new user
- *     tags: [Auth]
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
@@ -37,8 +44,22 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
  *     responses:
  *       201:
  *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User registered successfully
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
  *       400:
  *         description: Validation error or user already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/signup', signupUser);
 
@@ -47,7 +68,7 @@ router.post('/signup', signupUser);
  * /auth/login:
  *   post:
  *     summary: Login user and get tokens
- *     tags: [Auth]
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
@@ -66,8 +87,28 @@ router.post('/signup', signupUser);
  *     responses:
  *       200:
  *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Login successful
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 accessToken:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                 refreshToken:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *       400:
  *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/login', loginUser);
 
@@ -76,7 +117,7 @@ router.post('/login', loginUser);
  * /auth/refresh:
  *   post:
  *     summary: Refresh access token using a refresh token
- *     tags: [Auth]
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
@@ -103,7 +144,7 @@ router.post('/refresh', refreshAccessToken);
  * /auth/logout:
  *   post:
  *     summary: Logout user by deleting refresh token
- *     tags: [Auth]
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
@@ -128,7 +169,7 @@ router.post('/logout', logoutUser);
  * /auth/profile:
  *   get:
  *     summary: Get logged-in user profile
- *     tags: [Auth]
+ *     tags: [Authentication]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -146,7 +187,7 @@ router.get('/profile', validateToken, (req, res) => {
  * /auth/admin:
  *   get:
  *     summary: Access admin-only route
- *     tags: [Auth]
+ *     tags: [Authentication]
  *     security:
  *       - bearerAuth: []
  *     responses:

@@ -7,12 +7,12 @@ const controller = require('../controllers/team.controller');
  * @swagger
  * tags:
  *   name: Teams
- *   description: Team management APIs
+ *   description: Team management APIs - create, join, leave, transfer leadership, manage members
  */
 
 /**
  * @swagger
- * /team/create:
+ * /teams/create:
  *   post:
  *     summary: Create a new team
  *     tags: [Teams]
@@ -33,15 +33,36 @@ const controller = require('../controllers/team.controller');
  *     responses:
  *       201:
  *         description: Team created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Team created successfully
+ *                 team:
+ *                   $ref: '#/components/schemas/Team'
+ *                 code:
+ *                   type: string
+ *                   example: ABC123
  *       400:
  *         description: Team name required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 
 /**
  * @swagger
- * /team/join:
+ * /teams/join:
  *   post:
  *     summary: Join an existing team with a code
  *     tags: [Teams]
@@ -72,7 +93,7 @@ const controller = require('../controllers/team.controller');
 
 /**
  * @swagger
- * /team/leave:
+ * /teams/leave:
  *   post:
  *     summary: Leave a team (deletes team if empty or transfers leadership if leader)
  *     tags: [Teams]
@@ -101,7 +122,7 @@ const controller = require('../controllers/team.controller');
 
 /**
  * @swagger
- * /team/members:
+ * /teams/members:
  *   get:
  *     summary: Get all members of a team
  *     tags: [Teams]
@@ -127,7 +148,7 @@ const controller = require('../controllers/team.controller');
 
 /**
  * @swagger
- * /team/transfer:
+ * /teams/transfer:
  *   post:
  *     summary: Transfer leadership to another member
  *     tags: [Teams]
@@ -162,7 +183,7 @@ const controller = require('../controllers/team.controller');
 
 /**
  * @swagger
- * /team/kick:
+ * /teams/kick:
  *   post:
  *     summary: Kick a member from the team (leader only)
  *     tags: [Teams]

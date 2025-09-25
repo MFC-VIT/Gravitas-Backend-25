@@ -99,170 +99,6 @@ exports.joinLobby = async (req, res) => {
   //from db, form the lobby, and keep ready for game start
 };
 
-// exports.startGame = async (req, res) => {
-//   // Extract the userId from route parameters
-//   const { userId } = req.params;
-
-//   try {
-//     // Step 1: Find the team(s) that this user belongs to
-//     const { data: teamPlayers, error: teamPlayerError } = await supabase
-//       .from('TeamPlayer')
-//       .select('teamId')
-//       .eq('userId', userId);
-
-//     // If no team found, return 404
-//     if (teamPlayerError || !teamPlayers || teamPlayers.length === 0) {
-//       return res.status(404).json({
-//         error: 'Team not found for user',
-//         details: teamPlayerError ? teamPlayerError.details : undefined,
-//       });
-//     }
-
-//     // Step 2: Extract the teamId (note: column is 'teamId' in Supabase, not 'team_id')
-//     const teamId = teamPlayers[0].teamId;
-
-//     // Check if the user is the team leader
-//     const { data: teamData, error: teamDataError } = await supabase
-//       .from('Team')
-//       .select('leaderId')
-//       .eq('id', teamId)
-//       .single();
-
-//     if (teamDataError) {
-//       return res.status(500).json({
-//         error: 'Error fetching team leader information',
-//         details: teamDataError.message,
-//       });
-//     }
-
-//     const isLeader = teamData.leaderId === parseInt(userId);
-
-//     if (!isLeader) {
-//       // Return 403 Forbidden if the user is not the leader
-//       return res.status(403).json({
-//         error: 'You are not the team leader and cannot start the game',
-//       });
-//     }
-
-//     // Step 3: Check if the team is ready (isReadyScotland column)
-//     const { data: ready, error: StateError } = await supabase
-//       .from('Team')
-//       .select('isReadyScotland')
-//       .eq('id', teamId)
-//       .maybeSingle();
-
-//     if (StateError) {
-//       return res.status(500).json({
-//         error: 'Error in finding team ready state',
-//         details: StateError,
-//       });
-//     }
-
-//     if (!ready) {
-//       return res.status(404).json({ error: 'Team not found' });
-//     }
-
-//     if (ready.isReadyScotland == false) {
-//       const { data: ready, error: readyError } = await supabase
-//         .from('Team')
-//         .update({ isReadyScotland: true })
-//         .eq('id', teamId);
-
-//       if (readyError) {
-//         return res.status(400).json({
-//           error: 'Error updating ready status',
-//           details: readyError.message,
-//         });
-//       }
-//     }
-
-//     const { data: Lobby, error: lobbyError } = await supabase
-//       .from('Lobby')
-//       .select('id')
-//       .or(
-//         `AUserId.eq.${userId},BUserId.eq.${userId},CUserId.eq.${userId},DUserId.eq.${userId},EUserId.eq.${userId},FUserId.eq.${userId}`
-//       )
-//       .maybeSingle();
-
-//     const lobbyId = Lobby ? Lobby.id : null;
-
-//     if (lobbyError) {
-//       return res.status(400).json({
-//         error: 'Error fetching LobbyID',
-//         details: lobbyError.message,
-//       });
-//     }
-
-//     console.log('TeamState: ', ready);
-
-//     //check for other teams being ready or not, from lobbyId, get all teams in that lobby, check if all are ready or not
-//     // (AuserId, BUserId, CUserId, DUserId, EUserId, FUserId) from teams table leaderId
-//     const { data: teamsInLobby, error: teamsError } = await supabase
-//       .from('Team')
-//       .select('id, isReadyScotland, leaderId')
-//       .in(
-//         'leaderId',
-//         [
-//           Lobby ? Lobby.AUserId : null,
-//           Lobby ? Lobby.BUserId : null,
-//           Lobby ? Lobby.CUserId : null,
-//           Lobby ? Lobby.DUserId : null,
-//           Lobby ? Lobby.EUserId : null,
-//           Lobby ? Lobby.FUserId : null,
-//         ].filter((id) => id !== null)
-//       );
-
-//     if (teamsError) {
-//       return res.status(500).json({
-//         error: 'Error fetching teams in lobby',
-//         details: teamsError.message,
-//       });
-//     }
-
-//     const allReady =
-//       teamsInLobby && teamsInLobby.every((team) => team.isReadyScotland);
-
-//     if (!allReady) {
-//       const allReadyStat = 'Not all teams are ready yet.';
-//       return; // Exit if not all teams are ready
-//     }
-
-//     const allReadyStat = 'All teams are ready. Forming game board...';
-//     // Step 5: Form the game board since all teams are ready
-//     // Note: Ensure lobbyId is valid before proceeding
-//     if (!lobbyId) {
-//       return res.status(400).json({ error: 'Invalid lobby ID' });
-//     }
-
-//     // Step 4: Return the ready state and optionally proceed to form the game board
-//     //update as well
-//     res.json({
-//       message: 'Team ready state fetched successfully',
-//       team: {
-//         id: teamId,
-//         'isReadyScotland old state': ready.isReadyScotland,
-//         'Other Teams status': allReadyStat,
-//       },
-//     });
-//     //get lobbyId from Lobby table, check if user id equals AUserId, BUserId or CUserId or DUserId or FUserId
-//     //if yes, get lobbyId and pass it to formGameBoard function
-//     //lobbyId is string in Lobby table
-//     //userId is the user id in the code, and isLeader is if the user is the team leader or not. This has to be checked.
-
-//     formGameBoard(lobbyId);
-//     //if all teams are ready, then only form the game board
-//     //to be implemented next
-//     //work for next time I sit to code
-//     //uncomment top comment of this comment block, after formgameboard thingy is tested
-//   } catch (error) {
-//     console.error('Error fetching ready State of team:', error);
-//     res.status(500).json({
-//       error: 'Internal Server Error',
-//       details: error.message,
-//     });
-//   }
-// };
-
 exports.startGame = async (req, res) => {
   const { userId: userIdParam } = req.params;
 
@@ -445,79 +281,6 @@ exports.startGame = async (req, res) => {
   }
 };
 
-// async function formGameBoard(lobbyId) {
-//   const supabase = require('../../src/config/supabase');
-//   console.log('Forming game board for lobby:', lobbyId);
-
-//   //position all players on the gameboard, and return the gameboard details
-//   //get lobby ID, and fetch the gameboard details, update movehistory and gamestate (check schema from prisma.schema file),
-//   //set MR.X to 1, player turn to 1 (first player in team array), p2 to 2 and so on
-//   //gameboard has only nodes info and all that, common to all games
-//   //check karle movehistory aur gamestate mein kya update aur kahan karna hai, agar schema mein changes laane honge toh (try not to tho)
-
-//   // 1. Get all teams in the lobby
-//   // Find all teamIds in this lobby via TeamPlayer -> Lobby
-//   const { data: teamPlayers, error: tpErr } = await supabase
-//     .from('TeamPlayer')
-//     .select('teamId, userId, isLeader')
-//     .eq('isLeader', true);
-//   if (tpErr) throw tpErr;
-//   if (!teamPlayers || teamPlayers.length === 0)
-//     throw new Error('No team leaders found');
-
-//   // 2. Get all teams for these leaders
-//   const teamIds = teamPlayers.map((tp) => tp.teamId);
-//   const { data: teams, error: teamErr } = await supabase
-//     .from('Team')
-//     .select('id, leaderId')
-//     .in('id', teamIds);
-//   if (teamErr) throw teamErr;
-
-//   // 3. Filter only teams whose leader is in this lobby (by checking if leader is in teamPlayers)
-//   // (Assumes all leaders in teamPlayers are valid for this lobby)
-//   const validLeaderIds = teamPlayers.map((tp) => tp.userId);
-//   const validTeams = teams.filter((t) => validLeaderIds.includes(t.leaderId));
-//   if (validTeams.length === 0)
-//     throw new Error('No valid teams found for leaders in lobby');
-
-//   console.log('Valid Teams:', validTeams);
-//   console.log('Team Players:', teamPlayers);
-
-//   // Sort teams by leaderId to ensure consistent order
-//   validTeams.sort((a, b) => a.leaderId - b.leaderId);
-//   // Sort teamPlayers by teamId to match validTeams order
-//   teamPlayers.sort((a, b) => a.teamId - b.teamId);
-//   console.log('Sorted Valid Teams:', validTeams);
-//   console.log('Sorted Team Players:', teamPlayers);
-
-//   // 4. Place Mr.X first (first team leader), others follow
-//   const playerOrder = teamPlayers.map((tp, idx) => ({
-//     userId: tp.userId,
-//     teamId: tp.teamId,
-//     order: idx + 1,
-//     isMrX: idx === 0,
-//   }));
-
-//   // 5. Build stateJSON
-//   const stateJSON = {
-//     players: playerOrder,
-//     positions: {}, // to be filled with actual positions
-//     // add more game state fields as needed
-//   };
-//   console.log('playerOrder:', playerOrder);
-//   // 6. Insert into GameState
-//   const { error: gsErr } = await supabase.from('GameState').insert([
-//     {
-//       lobbyId,
-//       stateJSON,
-//       currentTurnUserId: playerOrder[0].userId.toString(),
-//     },
-//   ]);
-//   if (gsErr) throw gsErr;
-//   console.log('GameState initialized:', stateJSON);
-
-//   return stateJSON;
-// }
 async function formGameBoard(lobbyId) {
   const supabase = require('../../src/config/supabase');
   console.log('Forming game board for lobby:', lobbyId);
@@ -579,9 +342,19 @@ async function formGameBoard(lobbyId) {
   }));
 
   // 5. Build the state JSON
+  // Assign initial positions 1,2,3,4,5,6 to players 1,2,3,4,5,6
+  // Dynamically assign positions to userIds
+  const positions = {};
+  players.forEach((p, idx) => {
+    positions[p.userId] = {
+      userId: p.userId,
+      position: idx + 1,
+    };
+  });
   const stateJSON = {
     players,
-    positions: {}, // Positions can be filled later as needed
+    positions,
+    // add more game state fields as needed
   };
 
   // 6. Insert into GameState table
@@ -634,23 +407,20 @@ exports.getMoveOptions = async (req, res) => {
   if (currentTurnUserId !== userId.toString()) {
     return res.status(403).json({ error: "It's not your turn" });
   }
-  // Find the player in stateJSON
-  const player = stateJSON.players.find(
-    (p) => p.userId.toString() === userId.toString()
-  );
-  if (!player) {
-    return res.status(404).json({ error: 'Player not found in game state' });
-  }
 
-  const currentPosition = player.position;
-  if (!currentPosition) {
-    return res.status(400).json({ error: 'Player position not set' });
+  // Get the player's position from the positions object
+  const playerPositionObj = stateJSON.positions[userId];
+  if (!playerPositionObj || !playerPositionObj.position) {
+    return res
+      .status(404)
+      .json({ error: 'Player position not found in game state' });
   }
+  const currentPosition = playerPositionObj.position;
 
-  // Fetch possible move options from NodeData table based on current position
+  // Fetch possible move options from GameBoard table based on current position
   const { data: nodeData, error: nodeError } = await supabase
-    .from('NodeData')
-    .select('connectedNodes')
+    .from('GameBoard')
+    .select('connectionsJSON')
     .eq('nodeId', currentPosition)
     .single();
   if (nodeError) {
@@ -663,7 +433,7 @@ exports.getMoveOptions = async (req, res) => {
     return res.status(404).json({ error: 'Node data not found' });
   }
 
-  const moveOptions = nodeData.connectedNodes; // connectedNodes is an array of possible moves
+  const moveOptions = nodeData.connectionsJSON; // connectionsJSON is an array of possible moves
 
   res.json({ moveOptions });
 
@@ -671,18 +441,17 @@ exports.getMoveOptions = async (req, res) => {
   //Go to the db check possible nodes for current node
   //Return Possible Nodes
 };
-
 exports.makeMove = async (req, res) => {
-  //Logic: Requests Should have Chose =
-  //update the player position in db, and return the updated gameboard details
-  //Receive chosen node
-  //Log Move details in Player/Team Details
-  //Change Current Player to the next one
-  //Let them Move
-
+  // check DB for balance, make move only if possible
   const { userId, lobbyId, chosenNode } = req.body;
 
-  //getting stateJSON and currentTurnUserId from GameState table
+  if (!userId || !lobbyId || !chosenNode) {
+    return res.status(400).json({
+      error: 'Missing required fields: userId, lobbyId, or chosenNode',
+    });
+  }
+
+  // Get game state
   const { data: gameState, error: gsError } = await supabase
     .from('GameState')
     .select('*')
@@ -691,7 +460,7 @@ exports.makeMove = async (req, res) => {
   if (gsError) {
     return res.status(500).json({
       error: 'Error fetching game state',
-      details: gsError.message,
+      details: gsError.message || gsError,
     });
   }
   if (!gameState) {
@@ -705,6 +474,7 @@ exports.makeMove = async (req, res) => {
   if (currentTurnUserId !== userId.toString()) {
     return res.status(403).json({ error: "It's not your turn" });
   }
+
   // Find the player in stateJSON
   const playerIndex = stateJSON.players.findIndex(
     (p) => p.userId.toString() === userId.toString()
@@ -713,12 +483,109 @@ exports.makeMove = async (req, res) => {
     return res.status(404).json({ error: 'Player not found in game state' });
   }
 
-  // Update player position
-  stateJSON.players[playerIndex].position = chosenNode;
+  // Get the player's current position from stateJSON.positions
+  const playerPositionObj = stateJSON.positions[userId];
+  if (!playerPositionObj || !playerPositionObj.position) {
+    return res
+      .status(404)
+      .json({ error: 'Player position not found in game state' });
+  }
+  const currentPosition = playerPositionObj.position;
+
+  // Fetch possible move options from GameBoard table based on current position
+  const { data: nodeData, error: nodeError } = await supabase
+    .from('GameBoard')
+    .select('connectionsJSON')
+    .eq('nodeId', currentPosition)
+    .single();
+  if (nodeError) {
+    return res.status(500).json({
+      error: 'Error fetching node data',
+      details: nodeError.message,
+    });
+  }
+  if (!nodeData) {
+    return res.status(404).json({ error: 'Node data not found' });
+  }
+  let moveOptions = nodeData.connectionsJSON;
+  if (Array.isArray(moveOptions)) {
+    // OK
+  } else if (moveOptions && Array.isArray(moveOptions.nodes)) {
+    moveOptions = moveOptions.nodes;
+  } else if (moveOptions && typeof moveOptions === 'object') {
+    // Support connectionsJSON as an object with keys (buses, subways, taxies)
+    moveOptions = Object.values(moveOptions).filter(Array.isArray).flat();
+  } else if (typeof moveOptions === 'string') {
+    try {
+      const parsed = JSON.parse(moveOptions);
+      if (Array.isArray(parsed)) {
+        moveOptions = parsed;
+      } else if (parsed && Array.isArray(parsed.nodes)) {
+        moveOptions = parsed.nodes;
+      } else if (parsed && typeof parsed === 'object') {
+        moveOptions = Object.values(parsed).filter(Array.isArray).flat();
+      } else {
+        return res.status(500).json({
+          error:
+            'connectionsJSON string is valid JSON but does not contain an array, nodes array, or transport arrays',
+          details: { value: moveOptions },
+        });
+      }
+    } catch (error) {
+      return res.status(500).json({
+        error: 'connectionsJSON is not valid JSON',
+        details: { value: moveOptions, parseError: error.message },
+      });
+    }
+  } else if (moveOptions === null || moveOptions === undefined) {
+    return res.status(500).json({
+      error: 'connectionsJSON is null or undefined',
+      details: { value: moveOptions },
+    });
+  } else {
+    return res.status(500).json({
+      error:
+        'connectionsJSON is not an array, object with nodes array, or transport arrays',
+      details: { value: moveOptions },
+    });
+  }
+
+  // Output chosenNode and possible nodes before validating
+  console.log('Chosen node:', chosenNode);
+  console.log('Possible nodes:', moveOptions);
+  // Optionally, also send in response for debugging
+  res.locals.chosenNode = chosenNode;
+  res.locals.possibleNodes = moveOptions;
+
+  // Validate chosenNode is a valid move
+  if (!moveOptions.includes(Number(chosenNode))) {
+    return res.status(400).json({
+      error: 'Invalid move: chosen node is not a valid option',
+      chosenNode,
+      possibleNodes: moveOptions,
+      userId,
+      lobbyId,
+    });
+  }
+
+  // Update player position in stateJSON.positions
+  stateJSON.positions[userId].position = chosenNode;
 
   // Determine next player's turn
-  const nextPlayerIndex = (playerIndex + 1) % stateJSON.players.length;
-  const nextTurnUserId = stateJSON.players[nextPlayerIndex].userId.toString();
+  const playerIds = stateJSON.players.map((p) => p.userId);
+  const currentPlayerIdx = playerIds.indexOf(Number(userId));
+  if (currentPlayerIdx === -1) {
+    return res.status(500).json({
+      error: 'Current player not found in player list',
+      userId,
+      lobbyId,
+      chosenNode,
+      playerIds,
+      statePlayers: stateJSON.players,
+    });
+  }
+  const nextPlayerIndex = (currentPlayerIdx + 1) % playerIds.length;
+  const nextTurnUserId = playerIds[nextPlayerIndex].toString();
 
   // Before inserting into MoveHistory
   const { data: teamCheck } = await supabase
@@ -747,16 +614,18 @@ exports.makeMove = async (req, res) => {
       details: updateError.message,
     });
   }
+
   // Log move in MoveHistory
   const { error: mhError } = await supabase.from('MoveHistory').insert([
     {
       lobbyId,
       userId,
-      moveDetails: {
-        from: stateJSON.players[playerIndex].position, // previous position
+      moveJSON: {
+        from: currentPosition,
         to: chosenNode,
       },
-      timestamp: new Date().toISOString(),
+      roundNumber: 0, // You may want to increment this properly
+      createdAt: new Date().toISOString(),
     },
   ]);
   if (mhError) {
