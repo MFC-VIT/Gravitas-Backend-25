@@ -1,4 +1,4 @@
-generator client {
+/*generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
@@ -105,7 +105,7 @@ model Lobby {
 
 model GameState {
   id               String   @id @default(uuid())
-  lobbyId          String   @unique 
+  lobbyId          String   @unique   // ✅ ensures one-to-one with Lobby
   stateJSON        Json
   currentTurnUserId String
   lastUpdated      DateTime @default(now())
@@ -131,3 +131,4 @@ model GameBoard {
   connectionsJSON Json
   transportTypes Json
 }
+*/
