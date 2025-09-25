@@ -18,10 +18,10 @@ exports.chooseQuestion = async (req, res) => {
     }
 
     const { data: player, error: playerError } = await supabase
-      .from('User')
+      .from('TeamPlayer')
       .select('id, isLeader')
-      .eq('id', userId)
-      .eq('user_uuid', teamId)
+      .eq('userId', userId)
+      .eq('teamId', teamId)
       .single();
 
     if (playerError || !player) {
@@ -109,9 +109,9 @@ exports.submitAnswer = async (req, res) => {
     const { userId, teamId, questionId, selectedOption, lobbyId } = req.body;
 
     const { data: player, error: playerError } = await supabase
-      .from('User')
-      .select('id')
-      .eq('id', userId)
+      .from('TeamPlayer')
+      .select('userId')
+      .eq('userId', userId)
       .single();
 
     if (playerError || !player) {
