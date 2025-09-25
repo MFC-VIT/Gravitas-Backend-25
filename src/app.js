@@ -9,7 +9,8 @@ const scotlandyardplayer = require('../scotland-yard/routes/player.route.js');
 const scotlandyardadmin = require('../scotland-yard/routes/admin.route.js');
 const teamRoutes = require('./routes/team.route');
 const swaggerDocs = require('./config/swagger.js');
-const cors = require('../middleware/CORS');
+
+const cors = require('../middleware/cors.js');
 
 dotenv.config();
 
