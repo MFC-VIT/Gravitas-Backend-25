@@ -1,4 +1,4 @@
-generator client {
+/*generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
@@ -131,3 +131,4 @@ model GameBoard {
   connectionsJSON Json
   transportTypes Json
 }
+*/
