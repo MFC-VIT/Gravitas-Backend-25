@@ -27,7 +27,6 @@ const validateToken = require('../../middleware/validateTokenHandler');
  *               - teamId
  *               - categoryId
  *               - difficulty
- *               - lobbyId
  *             properties:
  *               userId:
  *                 type: integer
@@ -46,10 +45,6 @@ const validateToken = require('../../middleware/validateTokenHandler');
  *                 enum: [easy, medium, hard]
  *                 example: "easy"
  *                 description: Difficulty level of the question
- *               lobbyId:
- *                 type: string
- *                 example: "lobby-uuid-123"
- *                 description: ID of the game lobby
  *     responses:
  *       201:
  *         description: Question chosen successfully
@@ -96,7 +91,6 @@ router.post(
  *               - teamId
  *               - questionId
  *               - selectedOption
- *               - lobbyId
  *             properties:
  *               userId:
  *                 type: integer
@@ -115,10 +109,6 @@ router.post(
  *                 enum: [A, B, C, D]
  *                 example: "A"
  *                 description: Selected answer option (A, B, C, or D)
- *               lobbyId:
- *                 type: string
- *                 example: "lobby-uuid-123"
- *                 description: ID of the game lobby
  *     responses:
  *       200:
  *         description: Answer submitted successfully
@@ -148,47 +138,74 @@ router.post(
 router.post('/submit-answer', validateToken, playerControllers.submitAnswer);
 
 /**
- * @swagger
- * /jeopardy/player/scoreboard:
- *   get:
- *     summary: Get the current scoreboard
- *     tags: [Jeopardy - Player]
- *     parameters:
- *       - in: query
- *         name: lobbyId
- *         required: false
- *         schema:
- *           type: string
- *         description: Optional lobby ID to get specific game scoreboard
- *         example: "lobby-uuid-123"
+ * @openapi
+ * /jeopardy/player/teampoints:
+ *   post:
+ *     summary: Get the score for a specific team
+ *     tags:
+ *       - Jeopardy - Player
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               teamId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The unique ID of the team
+ *             required:
+ *               - teamId
  *     responses:
  *       200:
- *         description: Scoreboard fetched successfully
+ *         description: Team score fetched successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 scoreboard:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       teamId:
- *                         type: string
- *                         example: "team-uuid-456"
- *                       teamName:
- *                         type: string
- *                         example: "Avengers"
- *                       score:
- *                         type: integer
- *                         example: 350
- *                       rank:
- *                         type: integer
- *                         example: 1
+ *                 message:
+ *                   type: string
+ *                   example: Team score fetched successfully
+ *                 team:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                       example: "0e78a556-86dc-458f-9742-b1345177ce2b"
+ *                     name:
+ *                       type: string
+ *                       example: Team5
+ *                     teamPoints:
+ *                       type: integer
+ *                       example: 2000
+ *                     code:
+ *                       type: string
+ *                       example: FXNLXC
+ *       404:
+ *         description: Team not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Team not found
  *       500:
- *         description: Server error
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Something went wrong
  */
-router.get('/scoreboard', validateToken, playerControllers.getScoreboard);
-router.get('/teampoints', validateToken, playerControllers.getTeamScore);
+
+router.post('/teampoints', validateToken, playerControllers.getTeamScore);
+//router.post('/get-attempted', validateToken, playerControllers.getAttemptedQuestions);
 module.exports = router;

@@ -1,6 +1,6 @@
 const supabase = require('../../src/config/supabase');
 
-exports.startGame = async (req, res) => {
+/*exports.startGame = async (req, res) => {
   try {
     const userId = req.body.userId;
 
@@ -47,3 +47,4 @@ exports.startGame = async (req, res) => {
     res.status(500).json({ error: 'Something went wrong' });
   }
 };
+*/

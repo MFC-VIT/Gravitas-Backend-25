@@ -3,7 +3,7 @@ const dotenv = require('dotenv');
 const pinoHttp = require('pino-http');
 const logger = require('./utils/logger');
 const limiter = require('./utils/rate-limiter');
-const jeopardyadmin = require('../jeopardy/routes/admin.routes.js');
+//const jeopardyadmin = require('../jeopardy/routes/admin.routes.js');
 const jeopardyplayer = require('../jeopardy/routes/player.routes.js');
 const scotlandyardplayer = require('../scotland-yard/routes/player.route.js');
 const scotlandyardadmin = require('../scotland-yard/routes/admin.route.js');
@@ -62,7 +62,7 @@ app.use('/teams', teamRoutes);
 
 app.use('/scotland/player', scotlandyardplayer);
 app.use('/scotland/admin', scotlandyardadmin);
-app.use('/jeopardy/admin', jeopardyadmin);
+//app.use('/jeopardy/admin', jeopardyadmin);
 app.use('/jeopardy/player', jeopardyplayer);
 app.use('/hackathon/player', hackathonplayer);
 app.use('/hackathon/admin', hackathonadmin);
