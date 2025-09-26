@@ -1,0 +1,23 @@
+# Ignore build and generated artifacts
+
+node_modules/
+dist/
+coverage/
+.generated/
+.generated/\*\*
+
+# Prisma and generated client directories
+
+prisma/generated/
+prisma/generated/\*\*
+
+generated/
+generated/\*\*
+
+# Ignore TypeScript build caches
+
+\*.tsbuildinfo
+
+# Ignore temporary files
+
+.DS_Store
