@@ -84,6 +84,15 @@ exports.joinTeam = async (req, res) => {
     if (existError) return res.status(500).json({ error: existError.message });
     if (existing)
       return res.status(400).json({ error: 'Already in this team' });
+    //checking if user is already in another team
+    const { data: otherTeam, error: otherError } = await supabase
+      .from('TeamPlayer')
+      .select('id')
+      .eq('userId', userId)
+      .maybeSingle();
+    if (otherError) return res.status(500).json({ error: otherError.message });
+    if (otherTeam)
+      return res.status(400).json({ error: 'Already in another team' });
 
     const { error: addError } = await supabase
       .from('TeamPlayer')
