@@ -205,3 +205,23 @@ exports.getScoreboard = async (req, res) => {
     res.status(500).json({ error: 'Something went wrong' });
   }
 };
+
+exports.getTeamScore = async (req, res) => {
+  try {
+    const { teamId } = req.body; // assuming you pass /scoreboard/:teamId
+
+    const { data: team, error } = await supabase
+      .from('Team')
+      .select('id, name, teamPoints, code')
+      .eq('id', teamId) // filter by teamId
+      .single(); // return only one row
+
+    if (error) return res.status(500).json({ error: error.message });
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+
+    res.json({ message: 'Team score fetched successfully', team });
+  } catch (err) {
+    console.error('getTeamScore error', err);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};

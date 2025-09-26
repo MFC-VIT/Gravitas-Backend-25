@@ -190,5 +190,5 @@ router.post('/submit-answer', validateToken, playerControllers.submitAnswer);
  *         description: Server error
  */
 router.get('/scoreboard', validateToken, playerControllers.getScoreboard);
-
+router.get('/teampoints', validateToken, playerControllers.getTeamScore);
 module.exports = router;
