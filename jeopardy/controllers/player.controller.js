@@ -2,9 +2,9 @@ const supabase = require('../../src/config/supabase');
 
 exports.chooseQuestion = async (req, res) => {
   try {
-    const { userId, teamId, categoryId, difficulty, lobbyId } = req.body;
+    const { userId, teamId, categoryId, difficulty } = req.body;
 
-    const { data: lobby, error: lobbyError } = await supabase
+    /*const { data: lobby, error: lobbyError } = await supabase
       .from('JeopardyLobby')
       .select('isStarted')
       .eq('id', lobbyId)
@@ -15,7 +15,7 @@ exports.chooseQuestion = async (req, res) => {
     }
     if (!lobby.isStarted) {
       return res.status(403).json({ error: 'Game has not started yet' });
-    }
+    }*/
 
     const { data: player, error: playerError } = await supabase
       .from('TeamPlayer')
@@ -38,7 +38,7 @@ exports.chooseQuestion = async (req, res) => {
       .from('AnswerAttempt')
       .select('id')
       .eq('teamId', teamId)
-      .eq('lobbyId', lobbyId)
+      //.eq('lobbyId', lobbyId)
       .eq('categoryId', categoryId)
       .eq('difficulty', difficulty)
       .maybeSingle();
@@ -78,7 +78,7 @@ exports.chooseQuestion = async (req, res) => {
     const { error: insertError } = await supabase.from('AnswerAttempt').insert([
       {
         teamId,
-        lobbyId,
+        //lobbyId,
         questionId: chosenQuestion.id,
         categoryId,
         difficulty,
@@ -106,7 +106,7 @@ exports.chooseQuestion = async (req, res) => {
 
 exports.submitAnswer = async (req, res) => {
   try {
-    const { userId, teamId, questionId, selectedOption, lobbyId } = req.body;
+    const { userId, teamId, questionId, selectedOption } = req.body;
 
     const { data: player, error: playerError } = await supabase
       .from('TeamPlayer')
@@ -192,7 +192,7 @@ exports.submitAnswer = async (req, res) => {
   }
 };
 
-exports.getScoreboard = async (req, res) => {
+/*exports.getScoreboard = async (req, res) => {
   try {
     const { data: teams, error } = await supabase
       .from('Team')
@@ -204,7 +204,7 @@ exports.getScoreboard = async (req, res) => {
     console.error('getScoreboard error', err);
     res.status(500).json({ error: 'Something went wrong' });
   }
-};
+};*/
 
 exports.getTeamScore = async (req, res) => {
   try {
@@ -225,3 +225,28 @@ exports.getTeamScore = async (req, res) => {
     res.status(500).json({ error: 'Something went wrong' });
   }
 };
+
+// POST /jeopardy/player/get-attempted
+/*exports.getAttemptedQuestions = async (req, res) => {
+  const { teamId } = req.body;
+
+  if (!teamId) return res.status(400).json({ error: "teamId is required" });
+
+  try {
+    const { data: attempts, error } = await supabase
+      .from("AnswerAttempt")
+      .select("categoryId, questionId")
+      .eq("teamId", teamId);
+
+    if (error) throw error;
+
+    // Return an array of question identifiers in the same format the frontend uses
+    const attempted = attempts.map(a => `${a.categoryId}-${a.questionId}`);
+
+    return res.json({ attempted });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to fetch attempted questions" });
+  }
+};
+*/
