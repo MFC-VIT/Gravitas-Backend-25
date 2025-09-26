@@ -22,7 +22,7 @@ exports.viewTeam = async (req, res) => {
     //Step2: Fetch team name
     const { data: teamData, error: nameerror } = await supabase
       .from('Team')
-      .select('name, code, leaderId')
+      .select('name, code, leaderId, isMrX')
       .eq('id', teamId);
 
     if (nameerror) {
@@ -37,6 +37,7 @@ exports.viewTeam = async (req, res) => {
     const teamcode = teamData && teamData[0] ? teamData[0].code : 'Unknown';
     const teamleader =
       teamData && teamData[0] ? teamData[0].leaderId : 'Unknown';
+    const isMrX = teamData && teamData[0] ? teamData[0].isMrX : false;
 
     // Step 3: Fetch all players of that team
     const { data: allPlayers, error: allPlayersError } = await supabase
@@ -71,6 +72,7 @@ exports.viewTeam = async (req, res) => {
         team: {
           teamId,
           members: userIds,
+          isMrX: isMrX,
         },
       });
     }
@@ -82,6 +84,7 @@ exports.viewTeam = async (req, res) => {
         teamname: teamname,
         teamcode: teamcode,
         teamleader: teamleader,
+        isMrX: isMrX,
       },
       users,
     });
@@ -204,7 +207,22 @@ exports.startGame = async (req, res) => {
         error: 'Only team leaders can be in a lobby and play the game',
       });
     }
-
+    //if user id == Lobby.AUserId, set Team.isMrX = true
+    if (lobbyRow.AUserId === userId) {
+      const { data: updatedTeam, error: updateError } = await supabase
+        .from('Team')
+        .update({ isMrX: true })
+        .eq('id', teamId)
+        .select('id, leaderId, isMrX')
+        .single();
+      if (updateError) {
+        return res.status(500).json({
+          error: 'Error updating team info',
+          details: updateError.message,
+        });
+      }
+      updatedTeamRow = updatedTeam;
+    }
     if (leadersInLobby.length === 0) {
       return res.status(400).json({ error: 'No teams/users found in lobby' });
     }
