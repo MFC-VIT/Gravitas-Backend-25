@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const supabase = require('../config/supabase');
+const { error } = require('console');
 // const { supabase } = require('../config/supabase');
 
 // Generate Tokens
@@ -119,15 +120,37 @@ exports.loginUser = async (req, res) => {
     const accessToken = generateAccessToken(user);
     const refreshToken = await generateRefreshToken(user);
 
+    //trying to get teamId and isLeader from the TeamPlayer table
+    const { data: teamPlayerDetails, error: teamError } = await supabase
+      .from('TeamPlayer')
+      .select('*')
+      .eq('userId', user.id);
+
+    if (teamError) {
+      console.error('Supabase select error:', teamError);
+      throw teamError;
+    }
+
+    // Get the first team if user is in multiple teams, or null if no teams
+    const userTeamDetails =
+      teamPlayerDetails && teamPlayerDetails.length > 0
+        ? teamPlayerDetails[0]
+        : null;
+
     res.status(200).json({
       message: 'Login successful',
       accessToken,
       refreshToken,
-      user: { id: user.id, username: user.username, email: user.email },
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        teamDetails: userTeamDetails,
+      },
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
@@ -163,7 +186,9 @@ exports.refreshAccessToken = async (req, res) => {
         if (!dbUser) return res.status(404).json({ message: 'User not found' });
 
         const accessToken = generateAccessToken(dbUser);
-        res.json({ accessToken });
+        res.json({
+          accessToken,
+        });
       }
     );
   } catch (err) {
