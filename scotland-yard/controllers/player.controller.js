@@ -95,7 +95,7 @@ exports.viewTeam = async (req, res) => {
 
 //most likely will be seeded into DB, this will be the lobby creation, we won't require an endpoint for this
 //keep this at a very low priority
-exports.joinLobby = async (req, res) => {
+exports.joinLobby = async (_req, _res) => {
   //from db, form the lobby, and keep ready for game start
 };
 
@@ -162,7 +162,6 @@ exports.startGame = async (req, res) => {
         .eq('id', teamId)
         .select('id, leaderId, isReadyScotland')
         .single();
-
       if (updateError) {
         return res.status(500).json({
           error: 'Error updating team ready status',
@@ -175,16 +174,16 @@ exports.startGame = async (req, res) => {
     // 4) Get the Lobby that contains this user (select all user columns we need)
     const { data: lobbyRow, error: lobbyError } = await supabase
       .from('Lobby')
-      .select('id, AUserId, BUserId, CUserId, DUserId, EUserId, FUserId')
+      .select('*')
       .or(
         `AUserId.eq.${userId},BUserId.eq.${userId},CUserId.eq.${userId},DUserId.eq.${userId},EUserId.eq.${userId},FUserId.eq.${userId}`
       )
       .maybeSingle();
-
     if (lobbyError) {
-      return res
-        .status(500)
-        .json({ error: 'Error fetching lobby', details: lobbyError.message });
+      return res.status(500).json({
+        error: 'Error fetching lobby',
+        details: lobbyError.message,
+      });
     }
     if (!lobbyRow) {
       return res.status(404).json({ error: 'Lobby not found for this user' });
@@ -242,19 +241,16 @@ exports.startGame = async (req, res) => {
         lobbyId: lobbyRow.id,
       });
     }
-
-    // 7) All teams ready: create / form the game board and initialize GameState
-    // Validate lobbyId before proceeding
-    const lobbyId = lobbyRow.id;
-    if (!lobbyId) {
-      return res.status(400).json({ error: 'Invalid lobby ID' });
-    }
-
     // Option A: If formGameBoard is synchronous or returns an object and may modify DB,
     // await it and handle errors.
     try {
       // Assume formGameBoard returns gameBoard object or throws
-      const gameBoard = await formGameBoard(lobbyId); // implement this fn
+      // 7) All teams ready: create / form the game board and initialize GameState
+      const lobbyId = lobbyRow.id;
+      if (!lobbyId) {
+        return res.status(400).json({ error: 'Invalid lobby ID' });
+      }
+      await formGameBoard(lobbyId); // implement this fn
     } catch (fgbErr) {
       console.error('formGameBoard error:', fgbErr);
       return res.status(500).json({
@@ -271,7 +267,7 @@ exports.startGame = async (req, res) => {
         previousIsReady: teamRow.isReadyScotland,
         currentIsReady: updatedTeamRow.isReadyScotland,
       },
-      lobbyId,
+      lobbyId: lobbyRow.id,
     });
   } catch (error) {
     console.error('Error in startGame:', error);
@@ -339,6 +335,8 @@ async function formGameBoard(lobbyId) {
     teamId: team.id,
     order: idx + 1,
     isMrX: idx === 0, // First leader = MrX (can randomize if needed)
+    balance: idx === 0 ? 850 : 1320, // starting balances
+    gameEnded: false,
   }));
 
   // 5. Build the state JSON
@@ -354,6 +352,8 @@ async function formGameBoard(lobbyId) {
   const stateJSON = {
     players,
     positions,
+    mrXMoveCount: 0,
+    closed: false,
     // add more game state fields as needed
   };
 
@@ -373,6 +373,175 @@ async function formGameBoard(lobbyId) {
 
   console.log('GameState initialized:', stateJSON);
   return stateJSON;
+}
+
+// --- Helpers for movement and scoring ---
+
+function normalizeConnectionsJSON(value) {
+  // returns an object { buses: number[], subways: number[], taxies: number[] }
+  const empty = { buses: [], subways: [], taxies: [] };
+  if (!value) return empty;
+  try {
+    const v = typeof value === 'string' ? JSON.parse(value) : value;
+    if (Array.isArray(v)) {
+      // Treat as generic edges via taxi (cheapest default)
+      return {
+        buses: [],
+        subways: [],
+        taxies: v.filter((n) => typeof n === 'number'),
+      };
+    }
+    if (v && typeof v === 'object') {
+      return {
+        buses: Array.isArray(v.buses) ? v.buses : [],
+        subways: Array.isArray(v.subways) ? v.subways : [],
+        taxies: Array.isArray(v.taxies) ? v.taxies : [],
+      };
+    }
+  } catch (e) {
+    // ignore invalid JSON; fall through to return empty below
+    void e;
+  }
+  return empty;
+}
+
+async function getAdjacencyMap() {
+  // Build adjacency from GameBoard
+  const { data, error } = await supabase
+    .from('GameBoard')
+    .select('nodeId, connectionsJSON');
+  if (error) throw new Error('Failed to load GameBoard: ' + error.message);
+  const adj = new Map();
+  for (const row of data || []) {
+    const norm = normalizeConnectionsJSON(row.connectionsJSON);
+    const neighbors = new Set([...norm.buses, ...norm.subways, ...norm.taxies]);
+    adj.set(row.nodeId, Array.from(neighbors));
+  }
+  return adj;
+}
+
+function bfsDistance(adj, start, target) {
+  if (start === target) return 0;
+  const q = [start];
+  const seen = new Set([start]);
+  let dist = 0;
+  while (q.length) {
+    const size = q.length;
+    dist++;
+    for (let i = 0; i < size; i++) {
+      const cur = q.shift();
+      const neighbors = adj.get(cur) || [];
+      for (const nb of neighbors) {
+        if (seen.has(nb)) continue;
+        if (nb === target) return dist;
+        seen.add(nb);
+        q.push(nb);
+      }
+    }
+  }
+  return Infinity;
+}
+
+function isNodeOccupiedByDetective(stateJSON, targetNode, exceptUserId) {
+  const { players, positions } = stateJSON;
+  for (const p of players) {
+    if (p.isMrX) continue;
+    if (exceptUserId && p.userId === Number(exceptUserId)) continue;
+    const pos = positions[p.userId]?.position;
+    if (pos === targetNode) return true;
+  }
+  return false;
+}
+
+async function awardDetectiveCatchPoints(lobbyId, stateJSON) {
+  const { players, positions } = stateJSON;
+  const mrX = players.find((p) => p.isMrX);
+  if (!mrX) return;
+  const mrxPos = positions[mrX.userId]?.position;
+  if (!mrxPos) return;
+  const adj = await getAdjacencyMap();
+  const detectives = players.filter((p) => !p.isMrX);
+  const scored = detectives.map((d) => ({
+    userId: d.userId,
+    teamId: d.teamId,
+    dist: bfsDistance(adj, positions[d.userId]?.position, mrxPos),
+  }));
+  scored.sort((a, b) => a.dist - b.dist);
+  // Points: 5000, 4000, 3000, ... min 0
+  stateJSON.scores = stateJSON.scores || {};
+  for (let i = 0; i < scored.length; i++) {
+    const pts = Math.max(0, 5000 - i * 1000);
+    if (pts <= 0) break;
+    // Fetch current points then update with addition
+    const { data: teamRow } = await supabase
+      .from('Team')
+      .select('teamPoints')
+      .eq('id', scored[i].teamId)
+      .single();
+    const curr = (teamRow?.teamPoints ?? 0) + pts;
+    try {
+      await supabase
+        .from('Team')
+        .update({ teamPoints: curr })
+        .eq('id', scored[i].teamId);
+    } catch (e) {
+      console.debug(
+        'awardDetectiveCatchPoints: teamPoints update failed',
+        e?.message || e
+      );
+    }
+    // Also keep in state
+    stateJSON.scores[scored[i].teamId] =
+      (stateJSON.scores[scored[i].teamId] || 0) + pts;
+  }
+  // Close lobby
+  // Close lobby (best-effort)
+  try {
+    await supabase.from('Lobby').update({ isStarted: false }).eq('id', lobbyId);
+  } catch (e) {
+    console.debug(
+      'awardDetectiveCatchPoints: failed to close lobby',
+      e?.message || e
+    );
+  }
+  stateJSON.closed = true;
+}
+
+async function awardMrXVictoryPoints(lobbyId, stateJSON) {
+  const { players, mrXMoveCount } = stateJSON;
+  const mrX = players.find((p) => p.isMrX);
+  if (!mrX) return;
+  const pts = Math.floor((5000 / 20) * (mrXMoveCount || 0));
+  const { data: teamRow } = await supabase
+    .from('Team')
+    .select('teamPoints')
+    .eq('id', mrX.teamId)
+    .single();
+  const curr = (teamRow?.teamPoints ?? 0) + pts;
+  try {
+    await supabase
+      .from('Team')
+      .update({ teamPoints: curr })
+      .eq('id', mrX.teamId);
+  } catch (e) {
+    console.debug(
+      'awardMrXVictoryPoints: teamPoints update failed',
+      e?.message || e
+    );
+  }
+  stateJSON.scores = stateJSON.scores || {};
+  stateJSON.scores[mrX.teamId] = (stateJSON.scores[mrX.teamId] || 0) + pts;
+  // Close lobby
+  // Close lobby (best-effort)
+  try {
+    await supabase.from('Lobby').update({ isStarted: false }).eq('id', lobbyId);
+  } catch (e) {
+    console.debug(
+      'awardMrXVictoryPoints: failed to close lobby',
+      e?.message || e
+    );
+  }
+  stateJSON.closed = true;
 }
 
 exports.getMoveOptions = async (req, res) => {
@@ -433,7 +602,15 @@ exports.getMoveOptions = async (req, res) => {
     return res.status(404).json({ error: 'Node data not found' });
   }
 
-  const moveOptions = nodeData.connectionsJSON; // connectionsJSON is an array of possible moves
+  const normConn = normalizeConnectionsJSON(nodeData.connectionsJSON);
+  const moveOptions = {
+    taxi: normConn.taxies,
+    bus: normConn.buses,
+    subway: normConn.subways,
+    all: [
+      ...new Set([...normConn.taxies, ...normConn.buses, ...normConn.subways]),
+    ],
+  };
 
   res.json({ moveOptions });
 
@@ -443,7 +620,7 @@ exports.getMoveOptions = async (req, res) => {
 };
 exports.makeMove = async (req, res) => {
   // check DB for balance, make move only if possible
-  const { userId, lobbyId, chosenNode } = req.body;
+  const { userId, lobbyId, chosenNode, transport } = req.body;
 
   if (!userId || !lobbyId || !chosenNode) {
     return res.status(400).json({
@@ -507,48 +684,10 @@ exports.makeMove = async (req, res) => {
   if (!nodeData) {
     return res.status(404).json({ error: 'Node data not found' });
   }
-  let moveOptions = nodeData.connectionsJSON;
-  if (Array.isArray(moveOptions)) {
-    // OK
-  } else if (moveOptions && Array.isArray(moveOptions.nodes)) {
-    moveOptions = moveOptions.nodes;
-  } else if (moveOptions && typeof moveOptions === 'object') {
-    // Support connectionsJSON as an object with keys (buses, subways, taxies)
-    moveOptions = Object.values(moveOptions).filter(Array.isArray).flat();
-  } else if (typeof moveOptions === 'string') {
-    try {
-      const parsed = JSON.parse(moveOptions);
-      if (Array.isArray(parsed)) {
-        moveOptions = parsed;
-      } else if (parsed && Array.isArray(parsed.nodes)) {
-        moveOptions = parsed.nodes;
-      } else if (parsed && typeof parsed === 'object') {
-        moveOptions = Object.values(parsed).filter(Array.isArray).flat();
-      } else {
-        return res.status(500).json({
-          error:
-            'connectionsJSON string is valid JSON but does not contain an array, nodes array, or transport arrays',
-          details: { value: moveOptions },
-        });
-      }
-    } catch (error) {
-      return res.status(500).json({
-        error: 'connectionsJSON is not valid JSON',
-        details: { value: moveOptions, parseError: error.message },
-      });
-    }
-  } else if (moveOptions === null || moveOptions === undefined) {
-    return res.status(500).json({
-      error: 'connectionsJSON is null or undefined',
-      details: { value: moveOptions },
-    });
-  } else {
-    return res.status(500).json({
-      error:
-        'connectionsJSON is not an array, object with nodes array, or transport arrays',
-      details: { value: moveOptions },
-    });
-  }
+  const normConn = normalizeConnectionsJSON(nodeData.connectionsJSON);
+  const moveOptions = [
+    ...new Set([...normConn.buses, ...normConn.subways, ...normConn.taxies]),
+  ];
 
   // Output chosenNode and possible nodes before validating
   console.log('Chosen node:', chosenNode);
@@ -568,6 +707,101 @@ exports.makeMove = async (req, res) => {
     });
   }
 
+  // Occupancy rule: detectives cannot move onto another detective
+  const movingPlayer = stateJSON.players[playerIndex];
+  const isDetective = !movingPlayer.isMrX;
+  const targetOccupiedByDetective = isNodeOccupiedByDetective(
+    stateJSON,
+    Number(chosenNode),
+    userId
+  );
+  const mrXPlayer = stateJSON.players.find((p) => p.isMrX);
+  const mrXPos = stateJSON.positions[mrXPlayer.userId]?.position;
+  if (
+    isDetective &&
+    targetOccupiedByDetective &&
+    Number(chosenNode) !== mrXPos
+  ) {
+    return res.status(400).json({
+      error: 'Invalid move: target node occupied by another detective',
+      chosenNode,
+    });
+  }
+
+  // Determine transport/cost
+  const COSTS = { taxi: 44, bus: 55, subway: 110 };
+  const connectsBy = {
+    taxi: normConn.taxies.includes(Number(chosenNode)),
+    bus: normConn.buses.includes(Number(chosenNode)),
+    subway: normConn.subways.includes(Number(chosenNode)),
+  };
+  let mode = transport;
+  if (!mode) {
+    // choose cheapest available
+    if (connectsBy.taxi) mode = 'taxi';
+    else if (connectsBy.bus) mode = 'bus';
+    else if (connectsBy.subway) mode = 'subway';
+  }
+  if (!mode || !COSTS[mode]) {
+    return res
+      .status(400)
+      .json({ error: 'Transport mode required/invalid for this move' });
+  }
+  if (!connectsBy[mode]) {
+    return res
+      .status(400)
+      .json({ error: `Selected transport ${mode} is not valid for this edge` });
+  }
+
+  // Balance checks
+  const balance = movingPlayer.balance ?? 0;
+  if (balance < 44) {
+    movingPlayer.gameEnded = true;
+    // If all detectives gameEnded, Mr X wins
+    const allDetectivesDone = stateJSON.players
+      .filter((p) => !p.isMrX)
+      .every((p) => p.gameEnded);
+    if (allDetectivesDone) {
+      await awardMrXVictoryPoints(lobbyId, stateJSON);
+      // Persist state closure
+      await supabase
+        .from('GameState')
+        .update({ stateJSON, currentTurnUserId: gameState.currentTurnUserId })
+        .eq('lobbyId', lobbyId);
+      return res
+        .status(200)
+        .json({ message: 'Mr X wins! All detectives are out of balance.' });
+    }
+    // Persist state and inform
+    await supabase
+      .from('GameState')
+      .update({ stateJSON, currentTurnUserId: gameState.currentTurnUserId })
+      .eq('lobbyId', lobbyId);
+    return res
+      .status(400)
+      .json({ error: 'Insufficient balance (<44). Wait for game to end.' });
+  }
+  const moveCost = COSTS[mode];
+  if (balance < moveCost) {
+    return res
+      .status(400)
+      .json({ error: `Insufficient balance for ${mode} move` });
+  }
+
+  // Apply costs
+  movingPlayer.balance = balance - moveCost;
+  if (isDetective) {
+    // Transfer to Mr X
+    mrXPlayer.balance = (mrXPlayer.balance ?? 0) + moveCost;
+    // If detective's balance falls below 44 after this move, mark gameEnded
+    if (movingPlayer.balance < 44) {
+      movingPlayer.gameEnded = true;
+    }
+  } else {
+    // Mr X moved; count escape move
+    stateJSON.mrXMoveCount = (stateJSON.mrXMoveCount || 0) + 1;
+  }
+
   // Update player position in stateJSON.positions
   stateJSON.positions[userId].position = chosenNode;
 
@@ -584,7 +818,15 @@ exports.makeMove = async (req, res) => {
       statePlayers: stateJSON.players,
     });
   }
-  const nextPlayerIndex = (currentPlayerIdx + 1) % playerIds.length;
+  // Determine next player's turn, skipping ended players
+  let nextPlayerIndex = (currentPlayerIdx + 1) % playerIds.length;
+  for (let i = 0; i < playerIds.length; i++) {
+    const candidate = stateJSON.players.find(
+      (p) => p.userId === playerIds[nextPlayerIndex]
+    );
+    if (candidate && !candidate.gameEnded) break;
+    nextPlayerIndex = (nextPlayerIndex + 1) % playerIds.length;
+  }
   const nextTurnUserId = playerIds[nextPlayerIndex].toString();
 
   // Before inserting into MoveHistory
@@ -635,7 +877,163 @@ exports.makeMove = async (req, res) => {
     });
   }
 
-  res.json({
-    message: 'Move made successfully',
-  });
+  // Check catch condition: detective moved onto Mr X
+  if (isDetective && Number(chosenNode) === mrXPos) {
+    await awardDetectiveCatchPoints(lobbyId, stateJSON);
+    await supabase
+      .from('GameState')
+      .update({ stateJSON, currentTurnUserId: nextTurnUserId })
+      .eq('lobbyId', lobbyId);
+    return res.status(200).json({ message: 'Imposter caught! Lobby closed.' });
+  }
+  // Check catch condition: Mr X moved onto a detective
+  if (
+    !isDetective &&
+    isNodeOccupiedByDetective(stateJSON, Number(chosenNode))
+  ) {
+    await awardDetectiveCatchPoints(lobbyId, stateJSON);
+    await supabase
+      .from('GameState')
+      .update({ stateJSON, currentTurnUserId: nextTurnUserId })
+      .eq('lobbyId', lobbyId);
+    return res
+      .status(200)
+      .json({ message: 'Imposter encountered detective! Lobby closed.' });
+  }
+
+  // Check Mr X victory condition (all detectives ended)
+  const allDetectivesDone = stateJSON.players
+    .filter((p) => !p.isMrX)
+    .every((p) => p.gameEnded);
+  if (allDetectivesDone && !stateJSON.closed) {
+    await awardMrXVictoryPoints(lobbyId, stateJSON);
+    await supabase
+      .from('GameState')
+      .update({ stateJSON, currentTurnUserId: nextTurnUserId })
+      .eq('lobbyId', lobbyId);
+    return res.status(200).json({ message: 'Mr X wins! Lobby closed.' });
+  }
+
+  res.json({ message: 'Move made successfully' });
+};
+
+// Mr X double move route handler
+exports.mrxDoubleMove = async (req, res) => {
+  const {
+    userId,
+    lobbyId,
+    firstNode,
+    secondNode,
+    firstTransport,
+    secondTransport,
+  } = req.body;
+  if (!userId || !lobbyId || !firstNode || !secondNode) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  // Load state
+  const { data: gameState, error: gsError } = await supabase
+    .from('GameState')
+    .select('*')
+    .eq('lobbyId', lobbyId)
+    .single();
+  if (gsError || !gameState)
+    return res.status(500).json({ error: 'Failed to load game state' });
+  const stateJSON = gameState.stateJSON;
+  const mrX = stateJSON.players.find((p) => p.isMrX);
+  if (!mrX || mrX.userId.toString() !== userId.toString()) {
+    return res.status(403).json({ error: 'Only Mr X can double move' });
+  }
+  if (gameState.currentTurnUserId !== userId.toString()) {
+    return res.status(403).json({ error: "It's not your turn" });
+  }
+  // Helper to validate a single hop and cost
+  const COSTS = { taxi: 44, bus: 55, subway: 110 };
+  const validateHop = async (fromNode, toNode, transport) => {
+    const { data: nodeRow, error: nodeErr } = await supabase
+      .from('GameBoard')
+      .select('connectionsJSON')
+      .eq('nodeId', fromNode)
+      .single();
+    if (nodeErr || !nodeRow) throw new Error('Invalid from node');
+    const conn = normalizeConnectionsJSON(nodeRow.connectionsJSON);
+    const connectsBy = {
+      taxi: conn.taxies.includes(Number(toNode)),
+      bus: conn.buses.includes(Number(toNode)),
+      subway: conn.subways.includes(Number(toNode)),
+    };
+    let mode = transport;
+    if (!mode) {
+      if (connectsBy.taxi) mode = 'taxi';
+      else if (connectsBy.bus) mode = 'bus';
+      else if (connectsBy.subway) mode = 'subway';
+    }
+    if (!mode || !COSTS[mode] || !connectsBy[mode])
+      throw new Error('Invalid transport for hop');
+    return { mode, cost: COSTS[mode] };
+  };
+
+  try {
+    const from0 = stateJSON.positions[userId]?.position;
+    const hop1 = await validateHop(from0, firstNode, firstTransport);
+    const hop2 = await validateHop(
+      Number(firstNode),
+      secondNode,
+      secondTransport
+    );
+    const totalCost = hop1.cost + hop2.cost;
+    if ((mrX.balance ?? 0) < 44) {
+      mrX.gameEnded = true;
+      await supabase
+        .from('GameState')
+        .update({ stateJSON })
+        .eq('lobbyId', lobbyId);
+      return res.status(400).json({ error: 'Insufficient balance (<44).' });
+    }
+    if ((mrX.balance ?? 0) < totalCost) {
+      return res
+        .status(400)
+        .json({ error: 'Insufficient balance for double move' });
+    }
+    // Apply cost
+    mrX.balance -= totalCost;
+    // Move positions
+    stateJSON.positions[userId].position = Number(secondNode);
+    // Count escapes
+    stateJSON.mrXMoveCount = (stateJSON.mrXMoveCount || 0) + 2;
+
+    // Next turn
+    const playerIds = stateJSON.players.map((p) => p.userId);
+    const currentPlayerIdx = playerIds.indexOf(Number(userId));
+    let nextPlayerIndex = (currentPlayerIdx + 1) % playerIds.length;
+    for (let i = 0; i < playerIds.length; i++) {
+      const candidate = stateJSON.players.find(
+        (p) => p.userId === playerIds[nextPlayerIndex]
+      );
+      if (candidate && !candidate.gameEnded) break;
+      nextPlayerIndex = (nextPlayerIndex + 1) % playerIds.length;
+    }
+    const nextTurnUserId = playerIds[nextPlayerIndex].toString();
+
+    // Persist
+    await supabase
+      .from('GameState')
+      .update({ stateJSON, currentTurnUserId: nextTurnUserId })
+      .eq('lobbyId', lobbyId);
+
+    // If ended on detective node -> caught
+    if (isNodeOccupiedByDetective(stateJSON, Number(secondNode))) {
+      await awardDetectiveCatchPoints(lobbyId, stateJSON);
+      await supabase
+        .from('GameState')
+        .update({ stateJSON, currentTurnUserId: nextTurnUserId })
+        .eq('lobbyId', lobbyId);
+      return res
+        .status(200)
+        .json({ message: 'Imposter caught after double move! Lobby closed.' });
+    }
+
+    return res.status(200).json({ message: 'Double move successful' });
+  } catch (e) {
+    return res.status(400).json({ error: e.message || 'Double move failed' });
+  }
 };

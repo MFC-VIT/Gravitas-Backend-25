@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 
 const playerController = require('../controllers/player.controller');
-const validateToken = require('../../middleware/validateTokenHandler');
-const validateAdmin = require('../../middleware/validateAdminHandler');
 
 /**
  * @swagger
@@ -203,6 +201,10 @@ const validateAdmin = require('../../middleware/validateAdminHandler');
  *               chosenNode:
  *                 type: string
  *                 example: "8"
+ *               transport:
+ *                 type: string
+ *                 enum: [taxi, bus, subway]
+ *                 example: taxi
  *     responses:
  *       200:
  *         description: Move made successfully
@@ -250,6 +252,51 @@ router.get('/viewTeam/:userId', playerController.viewTeam);
 router.get('/startGame/:userId', playerController.startGame);
 router.post('/getMove', playerController.getMoveOptions);
 router.post('/makeMove', playerController.makeMove);
+/**
+ * @swagger
+ * /scotland/player/mrx/doubleMove:
+ *   post:
+ *     summary: Mr X performs a double move (two hops in one turn)
+ *     tags: [Scotland Yard - Player]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - lobbyId
+ *               - firstNode
+ *               - secondNode
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 example: "1"
+ *               lobbyId:
+ *                 type: string
+ *                 example: "6d8e0c0d-b59c-4f45-8431-cc356349ff5c"
+ *               firstNode:
+ *                 type: integer
+ *               secondNode:
+ *                 type: integer
+ *               firstTransport:
+ *                 type: string
+ *                 enum: [taxi, bus, subway]
+ *               secondTransport:
+ *                 type: string
+ *                 enum: [taxi, bus, subway]
+ *     responses:
+ *       200:
+ *         description: Double move successful or caught
+ *       400:
+ *         description: Validation or balance errors
+ *       403:
+ *         description: Not Mr X or not your turn
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/mrx/doubleMove', playerController.mrxDoubleMove);
 
 module.exports = router;
 
