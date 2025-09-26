@@ -204,7 +204,22 @@ exports.startGame = async (req, res) => {
         error: 'Only team leaders can be in a lobby and play the game',
       });
     }
-
+    //if user id == Lobby.AUserId, set Team.isMrX = true
+    if (lobbyRow.AUserId === userId) {
+      const { data: updatedTeam, error: updateError } = await supabase
+        .from('Team')
+        .update({ isMrX: true })
+        .eq('id', teamId)
+        .select('id, leaderId, isMrX')
+        .single();
+      if (updateError) {
+        return res.status(500).json({
+          error: 'Error updating team info',
+          details: updateError.message,
+        });
+      }
+      updatedTeamRow = updatedTeam;
+    }
     if (leadersInLobby.length === 0) {
       return res.status(400).json({ error: 'No teams/users found in lobby' });
     }

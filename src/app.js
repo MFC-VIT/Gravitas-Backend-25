@@ -7,19 +7,42 @@ const jeopardyadmin = require('../jeopardy/routes/admin.routes.js');
 const jeopardyplayer = require('../jeopardy/routes/player.routes.js');
 const scotlandyardplayer = require('../scotland-yard/routes/player.route.js');
 const scotlandyardadmin = require('../scotland-yard/routes/admin.route.js');
-// const scotlandyardadmin = require('../scotland-yard/routes/admin.route.js');
 const hackathonplayer = require('../hack_portal/routes/player.routes.js');
 const hackathonadmin = require('../hack_portal/routes/admin.routes.js');
 
 const teamRoutes = require('./routes/team.route');
 const swaggerDocs = require('./config/swagger.js');
 
-const cors = require('../middleware/cors.js');
+// Fix CORS import - use the cors package directly
+const cors = require('cors');
 
 dotenv.config();
 
 const app = express();
-app.use(cors);
+
+// Configure CORS properly
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or Postman)
+      if (!origin) return callback(null, true);
+
+      const allowedOrigins = ['*'];
+
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        process.env.NODE_ENV === 'development'
+      ) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all for now
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true,
+  })
+);
 
 const enablePino =
   process.env.NODE_ENV !== 'production' &&
