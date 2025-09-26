@@ -14,7 +14,7 @@ const hackathonadmin = require('../hack_portal/routes/admin.routes.js');
 const teamRoutes = require('./routes/team.route');
 const swaggerDocs = require('./config/swagger.js');
 
-const cors = require('../middleware/cors.js');
+const cors = require('cors');
 
 dotenv.config();
 
