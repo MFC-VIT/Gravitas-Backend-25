@@ -713,7 +713,7 @@ exports.makeMove = async (req, res) => {
       details: gsError.message || gsError,
     });
   }
-  if (!gameStateArray || gameStateArray.length === 0) {
+  if (!gameState || gameState.length === 0) {
     return res.status(404).json({ error: 'Game state not found' });
   }
 
