@@ -179,6 +179,25 @@ exports.submitAnswer = async (req, res) => {
         .eq('id', teamId);
 
       if (teamUpdateError) throw teamUpdateError;
+    } else if (!isCorrect) {
+      const { data: team, error: teamError } = await supabase
+        .from('Team')
+        .select('id, teamPoints')
+        .eq('id', teamId)
+        .single();
+
+      if (teamError || !team) {
+        return res.status(404).json({ error: 'Team not found' });
+      }
+
+      const newPoints = (team.teamPoints || 0) - (question.points * 0.25 || 0);
+
+      const { error: teamUpdateError } = await supabase
+        .from('Team')
+        .update({ teamPoints: newPoints })
+        .eq('id', teamId);
+
+      if (teamUpdateError) throw teamUpdateError;
     }
 
     return res.json({
@@ -226,27 +245,27 @@ exports.getTeamScore = async (req, res) => {
   }
 };
 
-// POST /jeopardy/player/get-attempted
-/*exports.getAttemptedQuestions = async (req, res) => {
+exports.getAttemptedQuestions = async (req, res) => {
   const { teamId } = req.body;
 
-  if (!teamId) return res.status(400).json({ error: "teamId is required" });
+  if (!teamId) return res.status(400).json({ error: 'teamId is required' });
 
   try {
     const { data: attempts, error } = await supabase
-      .from("AnswerAttempt")
-      .select("categoryId, questionId")
-      .eq("teamId", teamId);
+      .from('AnswerAttempt')
+      .select('questionId, categoryId, difficulty')
+      .eq('teamId', teamId);
 
     if (error) throw error;
 
-    // Return an array of question identifiers in the same format the frontend uses
-    const attempted = attempts.map(a => `${a.categoryId}-${a.questionId}`);
+    const attempted = attempts.map((a) => `${a.categoryId}-${a.difficulty}`);
+    console.log(attempted);
 
     return res.json({ attempted });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: "Failed to fetch attempted questions" });
+    return res
+      .status(500)
+      .json({ error: 'Failed to fetch attempted questions' });
   }
 };
-*/
