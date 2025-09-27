@@ -242,23 +242,23 @@ exports.startGame = async (req, res) => {
 
     // If some leaders do not have a corresponding Team row, handle that as needed.
     // Check if every team in this lobby has isReadyScotland === true
-    const allReady =
-      Array.isArray(teamsInLobby) &&
-      teamsInLobby.length > 0 &&
-      teamsInLobby.every((t) => !!t.isReadyScotland);
+    // const allReady =
+    //   Array.isArray(teamsInLobby) &&
+    //   teamsInLobby.length > 0 &&
+    //   teamsInLobby.every((t) => !!t.isReadyScotland);
 
-    if (!allReady) {
-      // Return a clear response instead of silently returning
-      return res.status(200).json({
-        message: 'Not all teams are ready yet',
-        team: {
-          id: teamId,
-          previousIsReady: teamRow.isReadyScotland,
-          currentIsReady: updatedTeamRow.isReadyScotland,
-        },
-        lobbyId: lobbyRow.id,
-      });
-    }
+    // if (!allReady) {
+    //   // Return a clear response instead of silently returning
+    //   return res.status(200).json({
+    //     message: 'Not all teams are ready yet',
+    //     team: {
+    //       id: teamId,
+    //       previousIsReady: teamRow.isReadyScotland,
+    //       currentIsReady: updatedTeamRow.isReadyScotland,
+    //     },
+    //     lobbyId: lobbyRow.id,
+    //   });
+    // }
     // Option A: If formGameBoard is synchronous or returns an object and may modify DB,
     // await it and handle errors.
     try {
@@ -268,7 +268,25 @@ exports.startGame = async (req, res) => {
       if (!lobbyId) {
         return res.status(400).json({ error: 'Invalid lobby ID' });
       }
-      await formGameBoard(lobbyId); // implement this fn
+
+      //check if gamestate already has a lobby with the uer in it
+      const { data: existingGameState, error: existingGSError } = await supabase
+        .from('GameState')
+        .select('*')
+        .eq('lobbyId', lobbyId);
+      if (existingGSError) {
+        return res.status(500).json({
+          error: 'Error checking existing game state',
+          details: existingGSError.message,
+        });
+      }
+      if (existingGameState && existingGameState.length > 0) {
+        return res.status(400).json({
+          error: 'Game has already been started in this lobby, joining that.',
+        });
+      } else {
+        await formGameBoard(lobbyId);
+      }
     } catch (fgbErr) {
       console.error('formGameBoard error:', fgbErr);
       return res.status(500).json({
@@ -572,21 +590,21 @@ exports.getMoveOptions = async (req, res) => {
   const { userId, lobbyId } = req.body;
 
   //getting stateJSON and currentTurnUserId from GameState table
-  const { data: gameState, error: gsError } = await supabase
+  const { data: gameStateArray, error: gsError } = await supabase
     .from('GameState')
     .select('*')
-    .eq('lobbyId', lobbyId)
-    .single();
+    .eq('lobbyId', lobbyId);
   if (gsError) {
     return res.status(500).json({
       error: 'Error fetching game state',
       details: gsError.message,
     });
   }
-  if (!gameState) {
+  if (!gameStateArray || gameStateArray.length === 0) {
     return res.status(404).json({ error: 'Game state not found' });
   }
 
+  const gameState = gameStateArray[0];
   const stateJSON = gameState.stateJSON;
   const currentTurnUserId = gameState.currentTurnUserId;
 
@@ -647,21 +665,21 @@ exports.makeMove = async (req, res) => {
   }
 
   // Get game state
-  const { data: gameState, error: gsError } = await supabase
+  const { data: gameStateArray, error: gsError } = await supabase
     .from('GameState')
     .select('*')
-    .eq('lobbyId', lobbyId)
-    .single();
+    .eq('lobbyId', lobbyId);
   if (gsError) {
     return res.status(500).json({
       error: 'Error fetching game state',
       details: gsError.message || gsError,
     });
   }
-  if (!gameState) {
+  if (!gameStateArray || gameStateArray.length === 0) {
     return res.status(404).json({ error: 'Game state not found' });
   }
 
+  const gameState = gameStateArray[0];
   const stateJSON = gameState.stateJSON;
   const currentTurnUserId = gameState.currentTurnUserId;
 
