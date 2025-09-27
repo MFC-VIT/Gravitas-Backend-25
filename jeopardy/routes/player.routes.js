@@ -206,6 +206,6 @@ router.post('/submit-answer', validateToken, playerControllers.submitAnswer);
  *                   example: Something went wrong
  */
 
-router.post('/teampoints', validateToken, playerControllers.getTeamScore);
-//router.post('/get-attempted', validateToken, playerControllers.getAttemptedQuestions);
+router.post('/teampoints', playerControllers.getTeamScore);
+router.post('/get-attempted', playerControllers.getAttemptedQuestions);
 module.exports = router;

@@ -251,23 +251,23 @@ exports.startGame = async (req, res) => {
 
     // If some leaders do not have a corresponding Team row, handle that as needed.
     // Check if every team in this lobby has isReadyScotland === true
-    const allReady =
-      Array.isArray(teamsInLobby) &&
-      teamsInLobby.length > 0 &&
-      teamsInLobby.every((t) => !!t.isReadyScotland);
+    // const allReady =
+    //   Array.isArray(teamsInLobby) &&
+    //   teamsInLobby.length > 0 &&
+    //   teamsInLobby.every((t) => !!t.isReadyScotland);
 
-    if (!allReady) {
-      // Return a clear response instead of silently returning
-      return res.status(200).json({
-        message: 'Not all teams are ready yet',
-        team: {
-          id: teamId,
-          previousIsReady: teamRow.isReadyScotland,
-          currentIsReady: updatedTeamRow.isReadyScotland,
-        },
-        lobbyId: lobbyRow.id,
-      });
-    }
+    // if (!allReady) {
+    //   // Return a clear response instead of silently returning
+    //   return res.status(200).json({
+    //     message: 'Not all teams are ready yet',
+    //     team: {
+    //       id: teamId,
+    //       previousIsReady: teamRow.isReadyScotland,
+    //       currentIsReady: updatedTeamRow.isReadyScotland,
+    //     },
+    //     lobbyId: lobbyRow.id,
+    //   });
+    // }
     // Option A: If formGameBoard is synchronous or returns an object and may modify DB,
     // await it and handle errors.
     try {
@@ -636,7 +636,7 @@ exports.getMoveOptions = async (req, res) => {
       details: gsError.message,
     });
   }
-  if (!gameState) {
+  if (!gameStateArray || gameStateArray.length === 0) {
     return res.status(404).json({ error: 'Game state not found' });
   }
 
@@ -713,7 +713,7 @@ exports.makeMove = async (req, res) => {
       details: gsError.message || gsError,
     });
   }
-  if (!gameState) {
+  if (!gameStateArray || gameStateArray.length === 0) {
     return res.status(404).json({ error: 'Game state not found' });
   }
 
