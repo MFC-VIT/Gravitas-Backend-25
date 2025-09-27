@@ -1,21 +1,25 @@
-const js = require("@eslint/js");
-const globals = require("globals");
-const { defineConfig } = require("eslint/config");
+const js = require('@eslint/js');
+const globals = require('globals');
+const { defineConfig } = require('eslint/config');
 
 module.exports = defineConfig([
+  // Ignore generated artifacts and nested projects
   {
-    files: ["**/*.{js,mjs,cjs}"],
+    ignores: ['node_modules/**', 'generated/**', 'Gravitas-Frontend-25/**'],
+  },
+  {
+    files: ['**/*.{js,mjs,cjs}'],
     plugins: { js },
-    extends: ["js/recommended"],
+    extends: ['js/recommended'],
     languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "commonjs",
+      ecmaVersion: 'latest',
+      sourceType: 'commonjs',
       globals: {
         ...globals.node,
       },
     },
     rules: {
-      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     },
   },
 ]);

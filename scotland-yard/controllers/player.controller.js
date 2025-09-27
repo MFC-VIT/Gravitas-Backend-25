@@ -1,4 +1,31 @@
 const supabase = require('../../src/config/supabase');
+const { publishMoveMade } = require('../../src/utils/realtime');
+
+function buildPawnsArray(stateJSON) {
+  const pawns = [];
+  try {
+    const positions = stateJSON?.positions || {};
+    const players = Array.isArray(stateJSON?.players) ? stateJSON.players : [];
+    for (const p of players) {
+      const pos = positions[p.userId]?.position ?? null;
+      pawns.push({
+        id: Number(p.userId),
+        position: pos,
+        budget: p.balance ?? 0,
+      });
+    }
+  } catch (_) {}
+  return pawns;
+}
+
+function buildBroadcastPayload(lobbyId, message, fields = {}) {
+  return {
+    lobbyId: String(lobbyId),
+    version: Date.now(),
+    message,
+    ...fields,
+  };
+}
 
 exports.viewTeam = async (req, res) => {
   const { userId } = req.params;
@@ -22,7 +49,7 @@ exports.viewTeam = async (req, res) => {
     //Step2: Fetch team name
     const { data: teamData, error: nameerror } = await supabase
       .from('Team')
-      .select('name, code, leaderId, isMrX')
+      .select('name, code, leaderId')
       .eq('id', teamId);
 
     if (nameerror) {
@@ -37,7 +64,6 @@ exports.viewTeam = async (req, res) => {
     const teamcode = teamData && teamData[0] ? teamData[0].code : 'Unknown';
     const teamleader =
       teamData && teamData[0] ? teamData[0].leaderId : 'Unknown';
-    const isMrX = teamData && teamData[0] ? teamData[0].isMrX : false;
 
     // Step 3: Fetch all players of that team
     const { data: allPlayers, error: allPlayersError } = await supabase
@@ -72,7 +98,6 @@ exports.viewTeam = async (req, res) => {
         team: {
           teamId,
           members: userIds,
-          isMrX: isMrX,
         },
       });
     }
@@ -84,7 +109,6 @@ exports.viewTeam = async (req, res) => {
         teamname: teamname,
         teamcode: teamcode,
         teamleader: teamleader,
-        isMrX: isMrX,
       },
       users,
     });
@@ -207,22 +231,7 @@ exports.startGame = async (req, res) => {
         error: 'Only team leaders can be in a lobby and play the game',
       });
     }
-    //if user id == Lobby.AUserId, set Team.isMrX = true
-    if (lobbyRow.AUserId === userId) {
-      const { data: updatedTeam, error: updateError } = await supabase
-        .from('Team')
-        .update({ isMrX: true })
-        .eq('id', teamId)
-        .select('id, leaderId, isMrX')
-        .single();
-      if (updateError) {
-        return res.status(500).json({
-          error: 'Error updating team info',
-          details: updateError.message,
-        });
-      }
-      updatedTeamRow = updatedTeam;
-    }
+
     if (leadersInLobby.length === 0) {
       return res.status(400).json({ error: 'No teams/users found in lobby' });
     }
@@ -262,13 +271,29 @@ exports.startGame = async (req, res) => {
     // Option A: If formGameBoard is synchronous or returns an object and may modify DB,
     // await it and handle errors.
     try {
-      // Assume formGameBoard returns gameBoard object or throws
-      // 7) All teams ready: create / form the game board and initialize GameState
+      // 7) All teams ready: form the game board or reuse existing state
       const lobbyId = lobbyRow.id;
       if (!lobbyId) {
         return res.status(400).json({ error: 'Invalid lobby ID' });
       }
-      await formGameBoard(lobbyId); // implement this fn
+      const init = await formGameBoard(lobbyId);
+      if (init && init.stateJSON) {
+        const pawnsArr = buildPawnsArray(init.stateJSON);
+        const players = init.stateJSON.players || [];
+        const currentTurnIndex = players.findIndex(
+          (p) => String(p.userId) === String(init.currentTurnUserId)
+        );
+        const payload = buildBroadcastPayload(lobbyId, 'game-started', {
+          pawns: pawnsArr,
+          currentTurn: currentTurnIndex >= 0 ? currentTurnIndex : 0,
+          currentTurnId:
+            currentTurnIndex >= 0
+              ? Number(players[currentTurnIndex]?.userId)
+              : Number(players[0]?.userId),
+          turnEndsAt: null,
+        });
+        publishMoveMade(lobbyId, payload).catch(() => {});
+      }
     } catch (fgbErr) {
       console.error('formGameBoard error:', fgbErr);
       return res.status(500).json({
@@ -375,14 +400,40 @@ async function formGameBoard(lobbyId) {
     // add more game state fields as needed
   };
 
-  // 6. Insert into GameState table
-  const { error: gsErr } = await supabase.from('GameState').insert([
-    {
-      lobbyId,
-      stateJSON,
-      currentTurnUserId: players[0].userId.toString(),
-    },
-  ]);
+  // 6. If a GameState already exists for this lobby, reuse it (idempotent)
+  const { data: existingStates, error: exErr } = await supabase
+    .from('GameState')
+    .select('*')
+    .eq('lobbyId', lobbyId)
+    .order('id', { ascending: false })
+    .limit(1);
+  if (exErr) {
+    console.error('Error checking existing GameState:', exErr);
+    return null;
+  }
+  if (Array.isArray(existingStates) && existingStates.length > 0) {
+    const existing = existingStates[0];
+    return {
+      stateJSON: existing.stateJSON,
+      currentTurnUserId: existing.currentTurnUserId,
+      created: false,
+    };
+  }
+
+  // Insert new GameState entry
+  const currentTurnUserId = players[0].userId.toString();
+  const { data: inserted, error: gsErr } = await supabase
+    .from('GameState')
+    .insert([
+      {
+        lobbyId,
+        stateJSON,
+        currentTurnUserId,
+      },
+    ])
+    .select('*')
+    .order('id', { ascending: false })
+    .limit(1);
 
   if (gsErr) {
     console.error('Error creating GameState:', gsErr);
@@ -390,7 +441,7 @@ async function formGameBoard(lobbyId) {
   }
 
   console.log('GameState initialized:', stateJSON);
-  return stateJSON;
+  return { stateJSON, currentTurnUserId, created: true };
 }
 
 // --- Helpers for movement and scoring ---
@@ -572,11 +623,13 @@ exports.getMoveOptions = async (req, res) => {
   const { userId, lobbyId } = req.body;
 
   //getting stateJSON and currentTurnUserId from GameState table
-  const { data: gameState, error: gsError } = await supabase
+  const { data: gameStates, error: gsError } = await supabase
     .from('GameState')
     .select('*')
     .eq('lobbyId', lobbyId)
-    .single();
+    .order('id', { ascending: false })
+    .limit(1);
+  const gameState = Array.isArray(gameStates) ? gameStates[0] : null;
   if (gsError) {
     return res.status(500).json({
       error: 'Error fetching game state',
@@ -647,11 +700,13 @@ exports.makeMove = async (req, res) => {
   }
 
   // Get game state
-  const { data: gameState, error: gsError } = await supabase
+  const { data: gameStates2, error: gsError } = await supabase
     .from('GameState')
     .select('*')
     .eq('lobbyId', lobbyId)
-    .single();
+    .order('id', { ascending: false })
+    .limit(1);
+  const gameState = Array.isArray(gameStates2) ? gameStates2[0] : null;
   if (gsError) {
     return res.status(500).json({
       error: 'Error fetching game state',
@@ -902,6 +957,27 @@ exports.makeMove = async (req, res) => {
       .from('GameState')
       .update({ stateJSON, currentTurnUserId: nextTurnUserId })
       .eq('lobbyId', lobbyId);
+    // Broadcast caught event
+    publishMoveMade(
+      lobbyId,
+      buildBroadcastPayload(lobbyId, 'caught', {
+        pawn: {
+          id: Number(userId),
+          position: Number(chosenNode),
+          budget: movingPlayer.balance ?? 0,
+        },
+        currentTurn: stateJSON.players.findIndex(
+          (p) => String(p.userId) === String(nextTurnUserId)
+        ),
+        currentTurnId: Number(nextTurnUserId),
+        lastMove: {
+          userId: Number(userId),
+          from: Number(currentPosition),
+          to: Number(chosenNode),
+        },
+        closed: true,
+      })
+    ).catch(() => {});
     return res.status(200).json({ message: 'Imposter caught! Lobby closed.' });
   }
   // Check catch condition: Mr X moved onto a detective
@@ -914,6 +990,26 @@ exports.makeMove = async (req, res) => {
       .from('GameState')
       .update({ stateJSON, currentTurnUserId: nextTurnUserId })
       .eq('lobbyId', lobbyId);
+    publishMoveMade(
+      lobbyId,
+      buildBroadcastPayload(lobbyId, 'caught', {
+        pawn: {
+          id: Number(userId),
+          position: Number(chosenNode),
+          budget: movingPlayer.balance ?? 0,
+        },
+        currentTurn: stateJSON.players.findIndex(
+          (p) => String(p.userId) === String(nextTurnUserId)
+        ),
+        currentTurnId: Number(nextTurnUserId),
+        lastMove: {
+          userId: Number(userId),
+          from: Number(currentPosition),
+          to: Number(chosenNode),
+        },
+        closed: true,
+      })
+    ).catch(() => {});
     return res
       .status(200)
       .json({ message: 'Imposter encountered detective! Lobby closed.' });
@@ -929,9 +1025,48 @@ exports.makeMove = async (req, res) => {
       .from('GameState')
       .update({ stateJSON, currentTurnUserId: nextTurnUserId })
       .eq('lobbyId', lobbyId);
+    publishMoveMade(
+      lobbyId,
+      buildBroadcastPayload(lobbyId, 'mrx-wins', {
+        pawn: {
+          id: Number(userId),
+          position: Number(chosenNode),
+          budget: movingPlayer.balance ?? 0,
+        },
+        currentTurn: stateJSON.players.findIndex(
+          (p) => String(p.userId) === String(nextTurnUserId)
+        ),
+        currentTurnId: Number(nextTurnUserId),
+        lastMove: {
+          userId: Number(userId),
+          from: Number(currentPosition),
+          to: Number(chosenNode),
+        },
+        closed: true,
+      })
+    ).catch(() => {});
     return res.status(200).json({ message: 'Mr X wins! Lobby closed.' });
   }
-
+  // Normal move broadcast
+  publishMoveMade(
+    lobbyId,
+    buildBroadcastPayload(lobbyId, 'move-made', {
+      pawn: {
+        id: Number(userId),
+        position: Number(chosenNode),
+        budget: movingPlayer.balance ?? 0,
+      },
+      currentTurn: stateJSON.players.findIndex(
+        (p) => String(p.userId) === String(nextTurnUserId)
+      ),
+      currentTurnId: Number(nextTurnUserId),
+      lastMove: {
+        userId: Number(userId),
+        from: Number(currentPosition),
+        to: Number(chosenNode),
+      },
+    })
+  ).catch(() => {});
   res.json({ message: 'Move made successfully' });
 };
 
@@ -946,14 +1081,21 @@ exports.mrxDoubleMove = async (req, res) => {
     secondTransport,
   } = req.body;
   if (!userId || !lobbyId || !firstNode || !secondNode) {
-    return res.status(400).json({ error: 'Missing required fields' });
+    return res
+      .status(400)
+      .json({
+        error:
+          'Missing required fields: userId, lobbyId, firstNode, or secondNode',
+      });
   }
   // Load state
-  const { data: gameState, error: gsError } = await supabase
+  const { data: gameStates3, error: gsError } = await supabase
     .from('GameState')
     .select('*')
     .eq('lobbyId', lobbyId)
-    .single();
+    .order('id', { ascending: false })
+    .limit(1);
+  const gameState = Array.isArray(gameStates3) ? gameStates3[0] : null;
   if (gsError || !gameState)
     return res.status(500).json({ error: 'Failed to load game state' });
   const stateJSON = gameState.stateJSON;
@@ -991,7 +1133,7 @@ exports.mrxDoubleMove = async (req, res) => {
   };
 
   try {
-    const from0 = stateJSON.positions[userId]?.position;
+    const from0 = stateJSON.positions[userId]?.position; // Use original position for lastMove 'from'
     const hop1 = await validateHop(from0, firstNode, firstTransport);
     const hop2 = await validateHop(
       Number(firstNode),
@@ -1045,11 +1187,47 @@ exports.mrxDoubleMove = async (req, res) => {
         .from('GameState')
         .update({ stateJSON, currentTurnUserId: nextTurnUserId })
         .eq('lobbyId', lobbyId);
+      publishMoveMade(
+        lobbyId,
+        buildBroadcastPayload(lobbyId, 'caught', {
+          pawn: {
+            id: Number(userId),
+            position: Number(secondNode),
+            budget: mrX.balance ?? 0,
+          },
+          currentTurn: stateJSON.players.findIndex(
+            (p) => String(p.userId) === String(nextTurnUserId)
+          ),
+          lastMove: {
+            userId: Number(userId),
+            from: Number(from0),
+            to: Number(secondNode),
+          },
+          closed: true,
+        })
+      ).catch(() => {});
       return res
         .status(200)
         .json({ message: 'Imposter caught after double move! Lobby closed.' });
     }
-
+    publishMoveMade(
+      lobbyId,
+      buildBroadcastPayload(lobbyId, 'move-made', {
+        pawn: {
+          id: Number(userId),
+          position: Number(secondNode),
+          budget: mrX.balance ?? 0,
+        },
+        currentTurn: stateJSON.players.findIndex(
+          (p) => String(p.userId) === String(nextTurnUserId)
+        ),
+        lastMove: {
+          userId: Number(userId),
+          from: Number(from0),
+          to: Number(secondNode),
+        },
+      })
+    ).catch(() => {});
     return res.status(200).json({ message: 'Double move successful' });
   } catch (e) {
     return res.status(400).json({ error: e.message || 'Double move failed' });

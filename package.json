@@ -47,7 +47,8 @@
     "swagger-ui": "^5.29.0",
     "swagger-ui-dist": "^5.29.0",
     "swagger-ui-express": "^5.0.1",
-    "swagger-ui-react": "^5.29.0"
+    "swagger-ui-react": "^5.29.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

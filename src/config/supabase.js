@@ -1,4 +1,11 @@
 const { createClient } = require('@supabase/supabase-js');
+let WebSocketImpl;
+try {
+  // Use ws in Node for Realtime websockets
+  WebSocketImpl = require('ws');
+} catch (_) {
+  WebSocketImpl = undefined;
+}
 require('dotenv').config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.SUPABASE_PROJECT;
@@ -18,6 +25,12 @@ if (!SUPABASE_ANON_KEY) {
   );
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+  global: WebSocketImpl ? { WebSocket: WebSocketImpl } : undefined,
+});
 
 module.exports = supabase;

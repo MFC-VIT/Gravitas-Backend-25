@@ -68,6 +68,9 @@ importers:
       swagger-ui-react:
         specifier: ^5.29.0
         version: 5.29.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      ws:
+        specifier: ^8.18.0
+        version: 8.18.3
     devDependencies:
       '@eslint/js':
         specifier: ^9.32.0

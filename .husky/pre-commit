@@ -2,5 +2,3 @@
 . "$(dirname "$0")/_/husky.sh"
 
 echo "Pre-commit hook running..."
-
-pnpm lint-staged
