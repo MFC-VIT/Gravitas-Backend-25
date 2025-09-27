@@ -126,6 +126,9 @@ exports.loginUser = async (req, res) => {
       .select('*')
       .eq('userId', user.id);
 
+    // const teamPlayeraData = await supabase.from('TeamPlayer').select("*").eq("teamId", teamPlayerDetails[0].teamId);
+    // const teamDetails = await supabase.from('Team').select("*").eq("id", teamPlayerDetails.teamId);
+
     if (teamError) {
       console.error('Supabase select error:', teamError);
       throw teamError;

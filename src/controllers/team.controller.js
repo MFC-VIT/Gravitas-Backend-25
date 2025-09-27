@@ -30,6 +30,15 @@ exports.createTeam = async (req, res) => {
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: 'Team name required' });
 
+    const { data: otherTeam, error: otherError } = await supabase
+      .from('TeamPlayer')
+      .select('id')
+      .eq('userId', userId)
+      .maybeSingle();
+    //if (otherError) return res.status(500).json({ error: otherError.message });
+    if (otherTeam)
+      return res.status(400).json({ error: 'Already in another team' });
+
     const code = await generateTeamCode();
 
     const { data: team, error: teamError } = await supabase

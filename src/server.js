@@ -5,13 +5,12 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0';
 
 let server;
 
 if (require.main === module) {
-  server = app.listen(PORT, HOST, () => {
-    logger.info(`Server running at http://${HOST}:${PORT}`);
+  server = app.listen(PORT, () => {
+    logger.info(`Server running at ${PORT}`);
   });
 
   const shutdown = (signal) => {
