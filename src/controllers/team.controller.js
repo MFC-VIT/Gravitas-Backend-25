@@ -28,47 +28,56 @@ exports.createTeam = async (req, res) => {
   try {
     const userId = req.user.id;
     const { name } = req.body;
+
     if (!name) return res.status(400).json({ error: 'Team name required' });
 
+    // Check if user already belongs to a team
     const { data: otherTeam, error: otherError } = await supabase
       .from('TeamPlayer')
       .select('id')
       .eq('userId', userId)
       .maybeSingle();
-    //if (otherError) return res.status(500).json({ error: otherError.message });
-    if (otherTeam)
-      return res.status(400).json({ error: 'Already in another team' });
 
+    if (otherError) return res.status(500).json({ error: otherError.message });
+    if (otherTeam) return res.status(400).json({ error: 'Already in another team' });
+
+    // Generate code
     const code = await generateTeamCode();
 
+    // Create the team
     const { data: team, error: teamError } = await supabase
       .from('Team')
       .insert([{ name, code, leaderId: userId, teamPoints: 0 }])
       .select()
       .single();
+
     if (teamError) return res.status(500).json({ error: teamError.message });
 
+    // Add leader to TeamPlayer table with isLeader = true
     const { error: memberError } = await supabase
       .from('TeamPlayer')
-      .insert([{ teamId: team.id, userId }]);
-    if (memberError)
-      return res.status(500).json({ error: memberError.message });
+      .insert([{ teamId: team.id, userId, isLeader: true }]);  // 👈 added isLeader
 
+    if (memberError) return res.status(500).json({ error: memberError.message });
+
+    // Fetch members
     const { data: members, error: membersError } = await supabase
       .from('TeamPlayer')
-      .select('userId')
+      .select('userId, isLeader')
       .eq('teamId', team.id);
-    if (membersError)
-      return res.status(500).json({ error: membersError.message });
 
-    res
-      .status(201)
-      .json({ message: 'Team created', team: { ...team, players: members } });
+    if (membersError) return res.status(500).json({ error: membersError.message });
+
+    res.status(201).json({
+      message: 'Team created',
+      team: { ...team, players: members }
+    });
   } catch (err) {
     console.error('createTeam error', err);
     res.status(500).json({ error: 'Failed to create team' });
   }
 };
+
 
 exports.joinTeam = async (req, res) => {
   try {
