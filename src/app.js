@@ -53,7 +53,7 @@ if (enablePino) {
 }
 
 app.use(express.json());
-app.use(limiter);
+//app.use(limiter);
 
 app.use('/health', require('./routes/health.route'));
 app.use('/auth', require('./routes/auth.route'));
